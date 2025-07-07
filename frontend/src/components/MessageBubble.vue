@@ -1,5 +1,15 @@
 <template>
-  <div :class="['flex flex-col', isMine ? 'items-end' : 'items-start']">
+  <!-- Message système -->
+  <div v-if="message.isSystem" class="flex justify-center mb-4">
+    <div
+      class="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full text-xs"
+    >
+      {{ message.text }}
+    </div>
+  </div>
+
+  <!-- Message normal -->
+  <div v-else :class="['flex flex-col', isMine ? 'items-end' : 'items-start']">
     <div
       :class="[
         'px-4 py-2 rounded-2xl text-sm max-w-[75%] relative shadow-sm',

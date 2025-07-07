@@ -86,6 +86,40 @@
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Séparez les adresses par des virgules pour créer un groupe
           </p>
+
+          <!-- Validation des emails -->
+          <div v-if="emailInput.trim()" class="mt-2 space-y-1">
+            <div
+              v-for="email in emailInputList"
+              :key="email"
+              class="flex items-center space-x-2 text-xs"
+            >
+              <span class="flex-1 truncate">{{ email }}</span>
+              <span v-if="isValidEmail(email)" class="text-green-600 dark:text-green-400">
+                ✓ Valide
+              </span>
+              <span v-else class="text-red-600 dark:text-red-400"> ✗ Format invalide </span>
+            </div>
+          </div>
+
+          <!-- Vérification des utilisateurs -->
+          <div v-if="isCheckingUsers" class="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            Vérification des utilisateurs...
+          </div>
+
+          <div v-if="userCheckResults.length > 0" class="mt-2 space-y-1">
+            <div
+              v-for="result in userCheckResults"
+              :key="result.email"
+              class="flex items-center space-x-2 text-xs"
+            >
+              <span class="flex-1 truncate">{{ result.email }}</span>
+              <span v-if="result.exists" class="text-green-600 dark:text-green-400">
+                ✓ {{ result.name }}
+              </span>
+              <span v-else class="text-red-600 dark:text-red-400"> ✗ Utilisateur introuvable </span>
+            </div>
+          </div>
         </div>
 
         <div class="mb-4" v-if="emailList.length > 1">
@@ -109,7 +143,7 @@
           </button>
           <button
             @click="createConversation"
-            :disabled="!isFormValid"
+            :disabled="!isFormValid || hasUserErrors"
             class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             {{ emailList.length > 1 ? 'Créer le groupe' : 'Créer la conversation' }}
@@ -121,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 
 const props = defineProps({
   conversations: Array,
@@ -155,6 +189,81 @@ const showModal = ref(false)
 const emailInput = ref('')
 const groupName = ref('')
 
+// État pour la vérification des utilisateurs
+const isCheckingUsers = ref(false)
+const userCheckResults = ref([])
+
+// Fonction pour vérifier si un utilisateur existe via l'API
+const checkUserExists = async (email) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token')
+    }
+
+    const response = await fetch(
+      `http://localhost:3001/api/users/search?email=${encodeURIComponent(email)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+
+    if (response.ok) {
+      const user = await response.json()
+      return { exists: true, name: user.username, user }
+    } else if (response.status === 404) {
+      return { exists: false, name: null, user: null }
+    } else {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+  } catch (error) {
+    console.error("Erreur lors de la vérification de l'utilisateur:", error)
+    return { exists: false, name: null, user: null }
+  }
+}
+
+// Fonction pour vérifier tous les utilisateurs en une seule requête
+const checkAllUsersAtOnce = async (emails) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token')
+    }
+
+    const response = await fetch('http://localhost:3001/api/users/check', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ emails }),
+    })
+
+    if (response.ok) {
+      const results = await response.json()
+      return results.map((result) => ({
+        email: result.email,
+        exists: result.exists,
+        name: result.user?.username || null,
+        user: result.user,
+      }))
+    } else {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+  } catch (error) {
+    console.error('Erreur lors de la vérification des utilisateurs:', error)
+    return emails.map((email) => ({
+      email,
+      exists: false,
+      name: null,
+      user: null,
+    }))
+  }
+}
+
 // Conversations filtrées en fonction de la recherche
 const filteredConversations = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -166,17 +275,27 @@ const filteredConversations = computed(() => {
   )
 })
 
-// Liste des emails validés
-const emailList = computed(() => {
+// Liste des emails saisis (avant validation)
+const emailInputList = computed(() => {
   return emailInput.value
     .split(',')
     .map((email) => email.trim())
-    .filter((email) => email && isValidEmail(email))
+    .filter((email) => email)
+})
+
+// Liste des emails validés
+const emailList = computed(() => {
+  return emailInputList.value.filter((email) => isValidEmail(email))
 })
 
 // Validation du formulaire
 const isFormValid = computed(() => {
   return emailList.value.length > 0
+})
+
+// Vérifier s'il y a des erreurs d'utilisateurs
+const hasUserErrors = computed(() => {
+  return userCheckResults.value.some((result) => !result.exists)
 })
 
 // Fonction pour valider un email
@@ -185,21 +304,81 @@ const isValidEmail = (email) => {
   return emailRegex.test(email)
 }
 
+// Fonction pour vérifier tous les utilisateurs
+const checkAllUsers = async () => {
+  if (emailList.value.length === 0) {
+    userCheckResults.value = []
+    return
+  }
+
+  isCheckingUsers.value = true
+  userCheckResults.value = []
+
+  try {
+    console.log('Vérification des utilisateurs:', emailList.value)
+
+    // Utiliser la vérification groupée pour de meilleures performances
+    const results = await checkAllUsersAtOnce(emailList.value)
+
+    console.log('Résultats:', results)
+    userCheckResults.value = results
+  } catch (error) {
+    console.error('Erreur lors de la vérification des utilisateurs:', error)
+    // En cas d'erreur, marquer tous les utilisateurs comme non trouvés
+    userCheckResults.value = emailList.value.map((email) => ({
+      email,
+      exists: false,
+      name: null,
+      user: null,
+    }))
+  } finally {
+    isCheckingUsers.value = false
+  }
+}
+
+// Watcher pour vérifier les utilisateurs quand la liste change
+watch(
+  emailList,
+  async (newEmailList, oldEmailList) => {
+    console.log('Emails changés:', newEmailList)
+
+    // Débounce pour éviter trop de requêtes
+    clearTimeout(checkUsersTimeout)
+    checkUsersTimeout = setTimeout(async () => {
+      await checkAllUsers()
+    }, 800)
+  },
+  { immediate: false },
+)
+
+let checkUsersTimeout = null
+
 // Fermer le modal
 const closeModal = () => {
   showModal.value = false
   emailInput.value = ''
   groupName.value = ''
+  userCheckResults.value = []
+  isCheckingUsers.value = false
+  if (checkUsersTimeout) {
+    clearTimeout(checkUsersTimeout)
+  }
 }
 
 // Créer la conversation
 const createConversation = () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value || hasUserErrors.value) return
 
   const conversationData = {
     emails: emailList.value,
     isGroup: emailList.value.length > 1,
     groupName: emailList.value.length > 1 ? groupName.value : null,
+    userNames: userCheckResults.value.reduce((acc, result) => {
+      if (result.exists) {
+        acc[result.email] = result.name
+      }
+      return acc
+    }, {}),
   }
 
   emit('add-conversation', conversationData)

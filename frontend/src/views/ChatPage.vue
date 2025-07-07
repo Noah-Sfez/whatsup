@@ -14,6 +14,7 @@
       :conversations="conversations"
       :activeConversationId="activeConversationId"
       @select="handleSelectConversation"
+      @add-conversation="handleAddConversation"
     />
     <ChatWindow
       v-if="activeConversation"
@@ -63,6 +64,60 @@ onMounted(() => {
 
 function handleSelectConversation(id) {
   activeConversationId.value = id
+}
+
+function handleAddConversation(conversationData) {
+  console.log('Création de conversation:', conversationData)
+
+  // Générer un nouvel ID pour la conversation
+  const newId = Date.now().toString()
+
+  // Créer le nom de la conversation en utilisant les noms vérifiés
+  let conversationName
+  if (conversationData.isGroup) {
+    // Pour un groupe, utiliser le nom du groupe ou "Groupe" + noms d'utilisateurs
+    if (conversationData.groupName) {
+      conversationName = conversationData.groupName
+    } else {
+      const userNames = conversationData.emails.map(
+        (email) => conversationData.userNames[email] || email,
+      )
+      conversationName = `Groupe (${userNames.slice(0, 2).join(', ')}${userNames.length > 2 ? '...' : ''})`
+    }
+  } else {
+    // Pour une conversation individuelle, utiliser le nom de l'utilisateur ou l'email
+    const email = conversationData.emails[0]
+    conversationName = conversationData.userNames[email] || email
+  }
+
+  // Ajouter la nouvelle conversation
+  const newConversation = {
+    id: newId,
+    name: conversationName,
+    isGroup: conversationData.isGroup,
+    emails: conversationData.emails,
+    groupName: conversationData.groupName,
+    userNames: conversationData.userNames,
+  }
+
+  conversations.value.push(newConversation)
+
+  // Sélectionner automatiquement la nouvelle conversation
+  activeConversationId.value = newId
+
+  // Optionnel : ajouter un message de bienvenue
+  const welcomeMessage = conversationData.isGroup
+    ? `Groupe créé avec ${Object.values(conversationData.userNames).join(', ')}`
+    : `Conversation créée avec ${conversationName}`
+
+  messages.value.push({
+    id: Date.now().toString() + '_welcome',
+    conversationId: newId,
+    senderId: 'system',
+    text: welcomeMessage,
+    timestamp: Date.now(),
+    isSystem: true,
+  })
 }
 
 function handleSendMessage(text) {
