@@ -9,22 +9,31 @@
   </div>
 
   <!-- Message normal -->
-  <div v-else :class="['flex flex-col', isMine ? 'items-end' : 'items-start']">
+  <div v-else :class="['flex flex-col mb-4', isMine ? 'items-end' : 'items-start']">
     <div
       :class="[
         'px-4 py-2 rounded-2xl text-sm max-w-[75%] relative shadow-sm',
         isMine
-          ? 'bg-[#d9fdd3] text-black self-end'
-          : 'bg-white text-black self-start dark:bg-gray-700 dark:text-white',
+          ? 'bg-green-500 text-white self-end rounded-br-md'
+          : 'bg-gray-200 text-black self-start dark:bg-gray-600 dark:text-white rounded-bl-md',
       ]"
     >
+      <!-- Nom de l'utilisateur pour les messages des autres -->
+      <div v-if="!isMine && message.username" class="text-xs font-semibold mb-1 opacity-75">
+        {{ message.username }}
+      </div>
+
       <p class="pr-8">{{ message.text }}</p>
-      <span class="absolute bottom-1 right-2 text-[10px] text-gray-500 dark:text-black">
+
+      <span
+        :class="[
+          'absolute bottom-1 right-2 text-[10px]',
+          isMine ? 'text-green-100' : 'text-gray-500 dark:text-gray-400',
+        ]"
+      >
         {{ formattedTime }}
       </span>
     </div>
-
-    <div class="h-5"></div>
   </div>
 </template>
 

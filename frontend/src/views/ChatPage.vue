@@ -170,7 +170,14 @@ const fetchMessages = async (conversationId) => {
     if (!token) return
 
     const response = await fetch(
-      `http://localhost:3001/api/conversations/${conversationId}/messages`,
+      `http://localhost:3001/api/groups/${conversationId}/messages`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -234,9 +241,9 @@ async function handleAddConversation(conversationData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(conversationData)
+      body: JSON.stringify(conversationData),
     })
 
     if (!response.ok) {
@@ -270,7 +277,7 @@ async function handleSendMessage(text) {
         body: JSON.stringify({
           content: text,
         }),
-      }
+      },
     )
 
     if (!response.ok) {

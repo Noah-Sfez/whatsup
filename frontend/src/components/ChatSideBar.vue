@@ -52,36 +52,57 @@
     </div>
 
     <!-- Liste des conversations -->
-    <div v-for="conv in filteredConversations" :key="conv.id">
+    <div v-if="loading" class="p-4 text-center">
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mx-auto mb-2"></div>
+      <p class="text-sm text-gray-600 dark:text-gray-400">Chargement des groupes...</p>
+    </div>
+
+    <div v-else-if="error" class="p-4 text-center">
+      <p class="text-sm text-red-600 dark:text-red-400 mb-2">{{ error }}</p>
       <button
-        @click="$emit('select', conv.id)"
-        :class="[
-          'w-full text-left px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#333] flex items-center gap-3',
-          conv.id === activeConversationId ? 'bg-white dark:bg-[#2a2a2a] font-bold' : '',
-        ]"
+        @click="$emit('retry')"
+        class="text-xs px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
       >
-        <div class="relative">
-          <div
-            class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center font-bold text-sm"
-          >
-            {{ conv.name[0] }}
-          </div>
-          <!-- Indicateur de statut en ligne -->
-          <div
-            class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-700 transition-all duration-300"
-            :class="[
-              conv.isOnline ? 'bg-green-500' : 'bg-gray-400',
-              conv.isOnline ? 'animate-pulse' : '',
-            ]"
-          ></div>
-        </div>
-        <div class="flex-1">
-          <div class="font-medium">{{ conv.name }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">
-            {{ conv.isOnline ? 'En ligne' : 'Hors ligne' }}
-          </div>
-        </div>
+        Réessayer
       </button>
+    </div>
+
+    <div v-else-if="filteredConversations.length === 0" class="p-4 text-center">
+      <p class="text-sm text-gray-600 dark:text-gray-400">Aucun groupe trouvé</p>
+    </div>
+
+    <div v-else>
+      <div v-for="conv in filteredConversations" :key="conv.id">
+        <button
+          @click="$emit('select', conv.id)"
+          :class="[
+            'w-full text-left px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#333] flex items-center gap-3',
+            conv.id === activeConversationId ? 'bg-white dark:bg-[#2a2a2a] font-bold' : '',
+          ]"
+        >
+          <div class="relative">
+            <div
+              class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center font-bold text-sm"
+            >
+              {{ conv.name[0] }}
+            </div>
+            <!-- Indicateur de statut en ligne -->
+            <div
+              class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-700 transition-all duration-300"
+              :class="[
+                conv.isOnline ? 'bg-green-500' : 'bg-gray-400',
+                conv.isOnline ? 'animate-pulse' : '',
+              ]"
+            ></div>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium">{{ conv.name }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              {{ conv.description || (conv.isOnline ? 'En ligne' : 'Hors ligne') }}
+            </div>
+          </div>
+        </button>
+      </div>
     </div>
 
     <!-- Modal pour créer une nouvelle conversation -->
@@ -180,6 +201,8 @@ import { ref, onMounted, computed, watch } from 'vue'
 const props = defineProps({
   conversations: Array,
   activeConversationId: String,
+  loading: Boolean,
+  error: String,
 })
 
 const isDark = ref(false)
@@ -389,15 +412,16 @@ const closeModal = () => {
 const createConversation = () => {
   if (!isFormValid.value || hasUserErrors.value) return
 
-  // Récupère les userId
-  const participants = userCheckResults.value
-    .filter(result => result.exists && result.user && result.user.id)
-    .map(result => result.user.id);
-
   const conversationData = {
-    participants, // des userId, pas des emails !
-    name: emailList.value.length > 1 ? groupName.value : null,
-    is_group: emailList.value.length > 1
+    emails: emailList.value,
+    isGroup: emailList.value.length > 1,
+    groupName: emailList.value.length > 1 ? groupName.value : null,
+    userNames: userCheckResults.value.reduce((acc, result) => {
+      if (result.exists) {
+        acc[result.email] = result.name
+      }
+      return acc
+    }, {}),
   }
 
   emit('add-conversation', conversationData)
