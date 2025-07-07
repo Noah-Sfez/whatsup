@@ -7,12 +7,12 @@
       </div>
       <div class="flex flex-col leading-tight">
         <span class="font-semibold text-sm">{{ conversation.name }}</span>
-        <span class="text-xs text-white/70">Online</span>
+        <span class="text-xs text-white/70">online</span>
       </div>
     </div>
 
     <!-- 💬 Messages -->
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="flex-1 overflow-y-auto p-4 space-y-2">
       <MessageBubble
         v-for="msg in messages"
         :key="msg.id"
