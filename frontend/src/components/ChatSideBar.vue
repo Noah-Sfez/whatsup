@@ -1,7 +1,17 @@
 <template>
-  <div class="w-1/4 h-full bg-[#f7f8fa] border-r border-gray-300 flex flex-col">
-    <!-- En-tête avec recherche et bouton + -->
-    <div class="p-4 border-b border-gray-300 bg-white">
+  <div class="w-1/4 h-full border-r bg-gray-100 dark:bg-[#2C2C2C] text-black dark:text-white">
+    <!-- Toggle mode jour/nuit -->
+    <div
+      class="flex justify-between items-center px-4 py-3 border-b border-gray-300 dark:border-gray-600"
+    >
+      <h2 class="text-lg font-bold">Chats</h2>
+
+      <button @click="toggleDarkMode" class="text-2xl" aria-label="Toggle Dark Mode">
+        <span v-if="isDark">🌙</span>
+        <span v-else>☀️</span>
+      </button>
+    </div>
+    <div class="p-4 border-b border-gray-300 bg-gray-100 dark:bg-[#2C2C2C] dark:text-white">
       <div class="flex items-center space-x-2">
         <div class="flex-1 relative">
           <input
@@ -42,26 +52,16 @@
     </div>
 
     <!-- Liste des conversations -->
-    <div class="flex-1 overflow-y-auto">
-      <div v-for="conv in filteredConversations" :key="conv.id">
-        <button
-          @click="$emit('select', conv.id)"
-          :class="[
-            'w-full text-left px-4 py-3 hover:bg-gray-200',
-            conv.id === activeConversationId ? 'bg-white font-bold text-black' : 'text-gray-800',
-          ]"
-        >
-          {{ conv.name }}
-        </button>
-      </div>
-
-      <!-- Message quand aucune conversation ne correspond à la recherche -->
-      <div
-        v-if="filteredConversations.length === 0 && searchQuery"
-        class="p-4 text-gray-500 text-center"
+    <div v-for="conv in filteredConversations" :key="conv.id">
+      <button
+        @click="$emit('select', conv.id)"
+        :class="[
+          'w-full text-left px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#333]',
+          conv.id === activeConversationId ? 'bg-white dark:bg-[#2a2a2a] font-bold' : '',
+        ]"
       >
-        Aucune conversation trouvée
-      </div>
+        {{ conv.name }}
+      </button>
     </div>
 
     <!-- Modal pour créer une nouvelle conversation -->
@@ -70,38 +70,40 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click="closeModal"
     >
-      <div class="bg-white rounded-lg p-6 w-96 max-w-md mx-4" @click.stop>
-        <h2 class="text-xl font-bold mb-4">Nouvelle conversation</h2>
+      <div class="bg-white dark:bg-gray-700 rounded-lg p-6 w-96 max-w-md mx-4" @click.stop>
+        <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Nouvelle conversation</h2>
 
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Adresse(s) email </label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            Adresse(s) email
+          </label>
           <textarea
             v-model="emailInput"
             placeholder="Entrez une ou plusieurs adresses email séparées par des virgules..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-300"
             rows="3"
           ></textarea>
-          <p class="text-xs text-gray-500 mt-1">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Séparez les adresses par des virgules pour créer un groupe
           </p>
         </div>
 
         <div class="mb-4" v-if="emailList.length > 1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Nom du groupe (optionnel)
           </label>
           <input
             v-model="groupName"
             type="text"
             placeholder="Nom du groupe..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-300"
           />
         </div>
 
         <div class="flex justify-end space-x-2">
           <button
             @click="closeModal"
-            class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
           >
             Annuler
           </button>
@@ -119,12 +121,31 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 const props = defineProps({
   conversations: Array,
   activeConversationId: String,
 })
+
+const isDark = ref(false)
+
+onMounted(() => {
+  isDark.value = document.documentElement.classList.contains('dark')
+})
+
+function toggleDarkMode() {
+  const htmlEl = document.documentElement
+  if (htmlEl.classList.contains('dark')) {
+    htmlEl.classList.remove('dark')
+    localStorage.theme = 'light'
+    isDark.value = false
+  } else {
+    htmlEl.classList.add('dark')
+    localStorage.theme = 'dark'
+    isDark.value = true
+  }
+}
 
 // État pour la recherche
 const searchQuery = ref('')
