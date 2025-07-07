@@ -1,29 +1,29 @@
 <script setup>
 import { ref } from 'vue'
-import { db } from './firebase'
-import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+// import { db } from './firebase'
+// import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 
-const message = ref("")
+const message = ref('')
 const messages = ref([])
 
-const sendMessage = async () => {
-  if (!message.value) return
-  await addDoc(collection(db, "messages"), {
-    content: message.value,
-    createdAt: new Date()
-  })
-  message.value = ""
-  await fetchMessages()
-}
+// const sendMessage = async () => {
+//   if (!message.value) return
+// //   await addDoc(collection(db, "messages"), {
+//     content: message.value,
+//     createdAt: new Date()
+//   })
+//   message.value = ""
+//   await fetchMessages()
+// }
 
-const fetchMessages = async () => {
-  const q = query(collection(db, "messages"), orderBy("createdAt", "desc"))
-  const snapshot = await getDocs(q)
-  messages.value = snapshot.docs.map(doc => doc.data())
-}
+// const fetchMessages = async () => {
+//   const q = query(collection(db, "messages"), orderBy("createdAt", "desc"))
+//   const snapshot = await getDocs(q)
+//   messages.value = snapshot.docs.map(doc => doc.data())
+// }
 
-// Charger les messages au chargement
-fetchMessages()
+// // Charger les messages au chargement
+// fetchMessages()
 </script>
 
 <template>
