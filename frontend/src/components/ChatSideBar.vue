@@ -1,11 +1,11 @@
 <template>
-    <div class="w-1/4 bg-gray-100 border-r overflow-y-auto">
+    <div class="w-1/4 h-full bg-gray-100 border-r border-gray-300 overflow-y-auto">
       <div v-for="conv in conversations" :key="conv.id">
         <button
           @click="$emit('select', conv.id)"
           :class="[
             'w-full text-left px-4 py-3 hover:bg-gray-200',
-            conv.id === activeConversationId ? 'bg-white font-bold' : ''
+            conv.id === activeConversationId ? 'bg-white font-bold text-black' : 'text-gray-800'
           ]"
         >
           {{ conv.name }}

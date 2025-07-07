@@ -1,12 +1,12 @@
 <template>
-    <div class="flex flex-col flex-1">
+    <div class="flex flex-col flex-1 bg-[#f0f0f0]">
       <!-- Header -->
-      <div class="p-4 border-b font-semibold bg-white">
+      <div class="p-4 bg-[#075e54] text-white font-semibold">
         {{ conversation.name }}
       </div>
   
       <!-- Messages -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
+      <div class="flex-1 overflow-y-auto p-4 space-y-2">
         <MessageBubble
           v-for="msg in messages"
           :key="msg.id"
@@ -16,7 +16,7 @@
       </div>
   
       <!-- Input -->
-      <div class="p-4 border-t bg-white">
+      <div class="p-4 bg-white border-t border-gray-300">
         <MessageInput @send="$emit('send', $event)" />
       </div>
     </div>
