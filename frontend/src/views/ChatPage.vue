@@ -16,30 +16,35 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import ChatSideBar from '../components/ChatSideBar.vue'
-import ChatWindow from '../components/ChatWindow.vue'
+import { ref, computed, onMounted } from 'vue'
+import ChatSidebar from '@/components/ChatSidebar.vue'
+import ChatWindow from '@/components/ChatWindow.vue'
 
 // Fake data temporaire
 const conversations = ref([
   { id: '1', name: 'Alice' },
   { id: '2', name: 'Bob' },
 ])
+
 const messages = ref([
   { id: 'm1', conversationId: '1', senderId: '1', text: 'Salut !', timestamp: Date.now() },
   { id: 'm2', conversationId: '2', senderId: '2', text: 'Yo !', timestamp: Date.now() },
 ])
 
-const filteredMessages = computed(() =>
-  messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
-)
-
-const currentUserId = 'me'
+const currentUserId = '1'
 const activeConversationId = ref(null)
 
 const activeConversation = computed(() =>
   conversations.value.find((c) => c.id === activeConversationId.value),
 )
+
+const filteredMessages = computed(() =>
+  messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
+)
+
+onMounted(() => {
+  activeConversationId.value = conversations.value[0]?.id
+})
 
 function handleSelectConversation(id) {
   activeConversationId.value = id

@@ -1,20 +1,31 @@
 <template>
+  <div :class="['flex flex-col', isMine ? 'items-end' : 'items-start']">
     <div
       :class="[
-        'px-4 py-2 rounded-xl max-w-[75%] shadow',
-        isMine
-          ? 'bg-[#dcf8c6] text-black self-end'
-          : 'bg-white text-black self-start'
+        'px-4 py-2 rounded-2xl text-sm max-w-[75%] relative shadow-sm',
+        isMine ? 'bg-[#d9fdd3] text-black self-end' : 'bg-white text-black self-start',
       ]"
     >
-      {{ message.text }}
+      <p class="pr-8">{{ message.text }}</p>
+      <span class="absolute bottom-1 right-2 text-[10px] text-gray-500">
+        {{ formattedTime }}
+      </span>
     </div>
-  </template>
-  
-  <script setup>
-  defineProps({
-    message: Object,
-    isMine: Boolean
-  })
-  </script>
-  
+
+    <div class="h-5"></div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  message: Object,
+  isMine: Boolean,
+})
+
+const formattedTime = computed(() => {
+  const date = new Date(props.message.timestamp)
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+})
+</script>
