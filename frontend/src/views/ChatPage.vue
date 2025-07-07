@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-screen">
-    <ChatSidebar
+    <ChatSideBar
       :conversations="conversations"
       :activeConversationId="activeConversationId"
       @select="handleSelectConversation"
@@ -17,8 +17,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import ChatSidebar from '@/components/ChatSidebar.vue'
-import ChatWindow from '@/components/ChatWindow.vue'
+import ChatSideBar from '../components/ChatSideBar.vue'
+import ChatWindow from '../components/ChatWindow.vue'
 
 // Fake data temporaire
 const conversations = ref([
