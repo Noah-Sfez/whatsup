@@ -1,3 +1,17 @@
+<style>
+.bg-whatsapp {
+  background-image: url('../assets/fondLightmode.png');
+  background-size: 40%;
+  background-repeat: repeat;
+}
+
+.dark .bg-whatsapp {
+  background-image: url('../assets/fondDarkmode.png');
+  background-size: 40%;
+  background-repeat: repeat;
+}
+</style>
+
 <template>
   <div class="flex flex-col flex-1 bg-[#eae6df] dark:bg-[#2c2c2c]">
     <div class="p-4 flex items-center gap-3 bg-[#075e54] dark:bg-[#054d44] text-white border-b">
@@ -11,7 +25,7 @@
     </div>
 
     <!-- Messages -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-2">
+    <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-whatsapp">
       <MessageBubble
         v-for="msg in messages"
         :key="msg.id"
