@@ -21,7 +21,7 @@ const httpServer = createServer(app);
 // Configuration CORS
 app.use(
     cors({
-        origin: "http://localhost:5174",
+        origin: ["http://localhost:5173", "http://localhost:5174"],
         credentials: true,
     })
 );
@@ -34,7 +34,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Configuration Socket.IO
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:5174",
+        origin: ["http://localhost:5173", "http://localhost:5174"],
         methods: ["GET", "POST"],
         credentials: true,
     },
