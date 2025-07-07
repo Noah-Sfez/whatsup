@@ -6,6 +6,10 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      redirect: '/chat',
+    },
+    {
+      path: '/chat',
       name: 'chat',
       component: ChatPage,
     },
