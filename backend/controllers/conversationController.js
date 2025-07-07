@@ -13,11 +13,9 @@ const conversationController = {
                 !Array.isArray(participants) ||
                 participants.length === 0
             ) {
-                return res
-                    .status(400)
-                    .json({
-                        error: "Participants array is required and must not be empty",
-                    });
+                return res.status(400).json({
+                    error: "Participants array is required and must not be empty",
+                });
             }
 
             console.log("Création de conversation avec:", {
@@ -145,9 +143,9 @@ const conversationController = {
                 .from("messages")
                 .select(
                     `
-          *,
-          users(username, email)
-        `
+                *,
+                users:sender_id(username, email)
+                `
                 )
                 .eq("conversation_id", conversationId)
                 .order("created_at", { ascending: true });
@@ -195,16 +193,16 @@ const conversationController = {
                     {
                         id: uuidv4(),
                         conversation_id: conversationId,
-                        sender_id: req.user.userId,
+                        user_id: req.user.userId,
                         content: content.trim(),
                         created_at: new Date().toISOString(),
                     },
                 ])
                 .select(
                     `
-          *,
-          users(username, email)
-        `
+                *,
+                users:sender_id(username, email)
+                `
                 )
                 .single();
 

@@ -211,15 +211,27 @@ async function handleAddConversation(conversationData) {
     console.log('Création de conversation:', conversationData)
 
     const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error("Token d'authentification manquant")
+    if (!token) throw new Error("Token d'authentification manquant")
+
+    // Appel au backend pour créer la conversation
+    const response = await fetch('http://localhost:3001/api/conversations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(conversationData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Erreur lors de la création')
     }
 
-    // Pour l'instant, on va créer une conversation factice
-    // jusqu'à ce que nous implémentions la logique de récupération des IDs d'utilisateurs
-    console.log('Données de conversation reçues:', conversationData)
+    const newConversation = await response.json()
+    console.log('Conversation créée en base:', newConversation)
 
-    // Recharger les conversations après création
+    // Recharge la liste des conversations ou ajoute newConversation à ta liste locale
     await fetchConversations()
   } catch (err) {
     console.error('Erreur lors de la création de la conversation:', err)
@@ -227,12 +239,12 @@ async function handleAddConversation(conversationData) {
   }
 }
 
+
 async function handleSendMessage(text) {
   try {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    // Envoyer le message via l'API
     const response = await fetch(
       `http://localhost:3001/api/conversations/${activeConversationId.value}/messages`,
       {
@@ -244,17 +256,18 @@ async function handleSendMessage(text) {
         body: JSON.stringify({
           content: text,
         }),
-      },
+      }
     )
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errData = await response.json()
+      throw new Error(errData.error || `HTTP error! status: ${response.status}`)
     }
 
     const newMessage = await response.json()
     console.log('Message envoyé:', newMessage)
 
-    // Ajouter le message à la liste locale
+    // Ajoute le message à la liste locale (pour affichage immédiat)
     messages.value.push({
       id: newMessage.id,
       conversationId: activeConversationId.value,
@@ -262,11 +275,13 @@ async function handleSendMessage(text) {
       text: newMessage.content,
       timestamp: new Date(newMessage.created_at).getTime(),
       username: newMessage.users?.username || 'Vous',
+      email: newMessage.users?.email,
     })
   } catch (err) {
     console.error("Erreur lors de l'envoi du message:", err)
   }
 }
+
 
 function handleLogout() {
   authStore.logout()

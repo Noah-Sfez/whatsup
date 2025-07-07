@@ -389,16 +389,15 @@ const closeModal = () => {
 const createConversation = () => {
   if (!isFormValid.value || hasUserErrors.value) return
 
+  // Récupère les userId
+  const participants = userCheckResults.value
+    .filter(result => result.exists && result.user && result.user.id)
+    .map(result => result.user.id);
+
   const conversationData = {
-    emails: emailList.value,
-    isGroup: emailList.value.length > 1,
-    groupName: emailList.value.length > 1 ? groupName.value : null,
-    userNames: userCheckResults.value.reduce((acc, result) => {
-      if (result.exists) {
-        acc[result.email] = result.name
-      }
-      return acc
-    }, {}),
+    participants, // des userId, pas des emails !
+    name: emailList.value.length > 1 ? groupName.value : null,
+    is_group: emailList.value.length > 1
   }
 
   emit('add-conversation', conversationData)
