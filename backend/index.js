@@ -7,6 +7,10 @@ const { createClient } = require("@supabase/supabase-js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
+const multer = require("multer");
+const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const httpServer = createServer(app);
@@ -20,6 +24,38 @@ app.use(
 );
 
 app.use(express.json());
+
+// Servir les fichiers statiques (images)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Configuration multer pour l'upload d'images
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads', 'images');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seuls les fichiers image sont autorisés!'));
+    }
+  }
+});
 
 // Configuration Socket.IO
 const io = new Server(httpServer, {
@@ -401,6 +437,44 @@ app.get(
     }
 );
 
+// Route pour l'upload d'images
+app.post("/api/upload/image", authenticateToken, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
+
+    const originalPath = req.file.path;
+    const optimizedPath = path.join(
+      path.dirname(originalPath),
+      'optimized-' + path.basename(originalPath)
+    );
+
+    // Optimiser l'image avec Sharp
+    await sharp(originalPath)
+      .resize(800, 600, { 
+        fit: 'inside',
+        withoutEnlargement: true 
+      })
+      .jpeg({ quality: 80 })
+      .toFile(optimizedPath);
+
+    // Supprimer l'original
+    fs.unlinkSync(originalPath);
+
+    const imageUrl = `/uploads/images/optimized-${path.basename(originalPath, path.extname(originalPath))}.jpg`;
+    
+    res.json({
+      success: true,
+      imageUrl: imageUrl,
+      originalName: req.file.originalname,
+      size: fs.statSync(optimizedPath).size
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Gestion des connexions Socket.IO
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -449,10 +523,10 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Envoyer un message
-    socket.on("send_message", async (data) => {
-        try {
-            const { groupId, content } = data;
+  // Envoyer un message
+  socket.on("send_message", async (data) => {
+    try {
+      const { groupId, content, messageType = 'text', imageUrl, imageName, imageSize } = data;
 
             // Vérifier si l'utilisateur est membre du groupe
             const { data: member } = await supabase
@@ -467,20 +541,31 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // Sauvegarder le message dans la base de données
-            const { data: message, error } = await supabase
-                .from("messages")
-                .insert([
-                    {
-                        id: uuidv4(),
-                        group_id: groupId,
-                        user_id: socket.userId,
-                        content,
-                        created_at: new Date().toISOString(),
-                    },
-                ])
-                .select(
-                    `
+      // Préparer les données du message selon le type
+      const messageData = {
+        id: uuidv4(),
+        group_id: groupId,
+        user_id: socket.userId,
+        message_type: messageType,
+        created_at: new Date().toISOString(),
+      };
+
+      // Ajouter le contenu selon le type de message
+      if (messageType === 'text') {
+        messageData.content = content;
+      } else if (messageType === 'image') {
+        messageData.image_url = imageUrl;
+        messageData.image_name = imageName;
+        messageData.image_size = imageSize;
+        messageData.content = content || ''; // Description optionnelle
+      }
+
+      // Sauvegarder le message dans la base de données
+      const { data: message, error } = await supabase
+        .from("messages")
+        .insert([messageData])
+        .select(
+          `
           *,
           users(username)
         `

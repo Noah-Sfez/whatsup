@@ -36,10 +36,19 @@ CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
+    content TEXT,
+    message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'file')),
+    image_url TEXT,
+    image_name VARCHAR(255),
+    image_size INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_edited BOOLEAN DEFAULT false
+    is_edited BOOLEAN DEFAULT false,
+    CONSTRAINT content_or_image_required CHECK (
+        (message_type = 'text' AND content IS NOT NULL) OR
+        (message_type = 'image' AND image_url IS NOT NULL) OR
+        (message_type = 'file' AND image_url IS NOT NULL)
+    )
 );
 
 -- Index pour optimiser les requêtes
