@@ -102,8 +102,8 @@ const fetchConversations = async () => {
       throw new Error("Token d'authentification manquant")
     }
 
-    console.log('Récupération des conversations...')
-    const response = await fetch('http://localhost:3001/api/conversations', {
+    console.log('Récupération des groupes...')
+    const response = await fetch('http://localhost:3001/api/groups', {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -115,24 +115,43 @@ const fetchConversations = async () => {
     }
 
     const data = await response.json()
-    console.log('Conversations récupérées:', data)
+    console.log('Groupes récupérés:', data)
 
     // Transformer les données pour l'affichage
-    conversations.value = data.map((conv) => ({
-      id: conv.id,
-      name: conv.name || 'Conversation sans nom',
-      isOnline: false, // À implémenter avec Socket.IO
-      is_group: conv.is_group,
-      created_at: conv.created_at,
-      participants: conv.conversation_participants || [],
-    }))
+    conversations.value = data.map((group) => {
+      // Déterminer le nom à afficher
+      let displayName = group.name
+      let isDirectMessage = false
+      
+      if (group.members && group.members.length === 2) {
+        // C'est une conversation directe (2 personnes)
+        const otherMember = group.members.find(member => 
+          member.user_id !== currentUserId.value
+        )
+        
+        if (otherMember && otherMember.users) {
+          displayName = otherMember.users.username
+          isDirectMessage = true
+        }
+      }
+      
+      return {
+        id: group.id,
+        name: displayName || 'Conversation sans nom',
+        description: group.description,
+        isOnline: false, // À implémenter avec Socket.IO
+        isDirectMessage,
+        members: group.members || [],
+        created_at: group.created_at,
+      }
+    })
 
     // Sélectionner la première conversation si elle existe
     if (conversations.value.length > 0 && !activeConversationId.value) {
       activeConversationId.value = conversations.value[0].id
     }
   } catch (err) {
-    console.error('Erreur lors de la récupération des conversations:', err)
+    console.error('Erreur lors de la récupération des groupes:', err)
     error.value = err.message
   } finally {
     loading.value = false
@@ -147,7 +166,14 @@ const fetchMessages = async (conversationId) => {
 
     console.log('Récupération des messages pour:', conversationId)
     const response = await fetch(
-      `http://localhost:3001/api/conversations/${conversationId}/messages`,
+      `http://localhost:3001/api/groups/${conversationId}/messages`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -170,7 +196,7 @@ const fetchMessages = async (conversationId) => {
     const newMessages = data.map((msg) => ({
       id: msg.id,
       conversationId: conversationId,
-      senderId: msg.sender_id,
+      senderId: msg.user_id, // Utiliser user_id du backend
       text: msg.content,
       timestamp: new Date(msg.created_at).getTime(),
       username: msg.users?.username || 'Utilisateur',
@@ -218,9 +244,9 @@ async function handleAddConversation(conversationData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(conversationData)
+      body: JSON.stringify(conversationData),
     })
 
     if (!response.ok) {
@@ -239,7 +265,6 @@ async function handleAddConversation(conversationData) {
   }
 }
 
-
 async function handleSendMessage(text) {
   try {
     const token = localStorage.getItem('token')
@@ -256,7 +281,7 @@ async function handleSendMessage(text) {
         body: JSON.stringify({
           content: text,
         }),
-      }
+      },
     )
 
     if (!response.ok) {
@@ -271,7 +296,7 @@ async function handleSendMessage(text) {
     messages.value.push({
       id: newMessage.id,
       conversationId: activeConversationId.value,
-      senderId: newMessage.sender_id,
+      senderId: newMessage.user_id, // Utiliser user_id du backend
       text: newMessage.content,
       timestamp: new Date(newMessage.created_at).getTime(),
       username: newMessage.users?.username || 'Vous',
@@ -281,7 +306,6 @@ async function handleSendMessage(text) {
     console.error("Erreur lors de l'envoi du message:", err)
   }
 }
-
 
 function handleLogout() {
   authStore.logout()
