@@ -142,7 +142,7 @@ CREATE POLICY "Users can join groups" ON group_members
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Politiques pour les participants de conversations
-CREATE POLICY "Users can view participants of leurs conversations" ON conversation_participants
+CREATE POLICY "Users can view participants of their conversations" ON conversation_participants
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM conversation_participants cp 
@@ -154,9 +154,9 @@ CREATE POLICY "Users can view participants of leurs conversations" ON conversati
 CREATE POLICY "Users can join conversations" ON conversation_participants
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Mettre à jour les politiques des messages pour inclure les conversations
-DROP POLICY "Users can view messages from their groups" ON messages;
-DROP POLICY "Users can send messages to leurs groupes" ON messages;
+-- Politiques pour les messages (supprimer les anciennes si elles existent)
+DROP POLICY IF EXISTS "Users can view messages from their groups" ON messages;
+DROP POLICY IF EXISTS "Users can send messages to their groups" ON messages;
 
 CREATE POLICY "Users can view messages from their groups and conversations" ON messages
     FOR SELECT USING (
