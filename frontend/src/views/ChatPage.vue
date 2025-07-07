@@ -38,8 +38,8 @@ const authStore = useAuthStore()
 
 // Fake data temporaire
 const conversations = ref([
-  { id: '1', name: 'Alice' },
-  { id: '2', name: 'Bob' },
+  { id: '1', name: 'Alice', isOnline: true },
+  { id: '2', name: 'Bob', isOnline: false },
 ])
 
 const messages = ref([
@@ -48,7 +48,19 @@ const messages = ref([
 ])
 
 const currentUserId = computed(() => authStore.currentUser?.id || '1')
-const activeConversationId = ref(null)
+const activeConversationId = ref('1')
+
+// Simuler le changement de statut en ligne
+function simulateOnlineStatus() {
+  setInterval(() => {
+    conversations.value.forEach((conv) => {
+      // Simuler un changement de statut aléatoire (20% de chance de changer)
+      if (Math.random() < 0.2) {
+        conv.isOnline = !conv.isOnline
+      }
+    })
+  }, 5000) // Changer toutes les 5 secondes
+}
 
 const activeConversation = computed(() =>
   conversations.value.find((c) => c.id === activeConversationId.value),
@@ -60,7 +72,30 @@ const filteredMessages = computed(() =>
 
 onMounted(() => {
   activeConversationId.value = conversations.value[0]?.id
+  simulateOnlineStatus()
+
+  // Optionnel : écouter les changements de statut en ligne via Socket.IO
+  // si vous voulez implémenter cela avec des vrais utilisateurs
+  // initSocketListeners()
 })
+
+// Fonction pour initialiser les listeners Socket.IO (optionnel)
+function initSocketListeners() {
+  // Cette fonction peut être utilisée pour écouter les changements de statut
+  // en temps réel depuis le serveur Socket.IO
+  // socket.on('user_online', (userId) => {
+  //   const conversation = conversations.value.find(c => c.userId === userId)
+  //   if (conversation) {
+  //     conversation.isOnline = true
+  //   }
+  // })
+  // socket.on('user_offline', (userId) => {
+  //   const conversation = conversations.value.find(c => c.userId === userId)
+  //   if (conversation) {
+  //     conversation.isOnline = false
+  //   }
+  // })
+}
 
 function handleSelectConversation(id) {
   activeConversationId.value = id

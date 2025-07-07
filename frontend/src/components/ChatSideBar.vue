@@ -56,11 +56,31 @@
       <button
         @click="$emit('select', conv.id)"
         :class="[
-          'w-full text-left px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#333]',
+          'w-full text-left px-4 py-3 hover:bg-gray-200 dark:hover:bg-[#333] flex items-center gap-3',
           conv.id === activeConversationId ? 'bg-white dark:bg-[#2a2a2a] font-bold' : '',
         ]"
       >
-        {{ conv.name }}
+        <div class="relative">
+          <div
+            class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center font-bold text-sm"
+          >
+            {{ conv.name[0] }}
+          </div>
+          <!-- Indicateur de statut en ligne -->
+          <div
+            class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-700 transition-all duration-300"
+            :class="[
+              conv.isOnline ? 'bg-green-500' : 'bg-gray-400',
+              conv.isOnline ? 'animate-pulse' : '',
+            ]"
+          ></div>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium">{{ conv.name }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            {{ conv.isOnline ? 'En ligne' : 'Hors ligne' }}
+          </div>
+        </div>
       </button>
     </div>
 
