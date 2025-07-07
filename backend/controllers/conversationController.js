@@ -6,6 +6,27 @@ const conversationController = {
     createConversation: async (req, res) => {
         try {
             const { participants, name, is_group } = req.body;
+
+            // Validation des données d'entrée
+            if (
+                !participants ||
+                !Array.isArray(participants) ||
+                participants.length === 0
+            ) {
+                return res
+                    .status(400)
+                    .json({
+                        error: "Participants array is required and must not be empty",
+                    });
+            }
+
+            console.log("Création de conversation avec:", {
+                participants,
+                name,
+                is_group,
+                userId: req.user.userId,
+            });
+
             const conversationId = uuidv4();
 
             // Créer la conversation
@@ -18,14 +39,21 @@ const conversationController = {
                         is_group: is_group || false,
                         created_by: req.user.userId,
                         created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
                     },
                 ])
                 .select()
                 .single();
 
             if (error) {
+                console.error(
+                    "Erreur lors de la création de la conversation:",
+                    error
+                );
                 return res.status(500).json({ error: error.message });
             }
+
+            console.log("Conversation créée avec succès:", conversation);
 
             // Ajouter les participants
             const participantInserts = participants.map((participantId) => ({
@@ -43,18 +71,27 @@ const conversationController = {
                 });
             }
 
+            console.log("Ajout des participants:", participantInserts);
+
             const { error: participantError } = await supabase
                 .from("conversation_participants")
                 .insert(participantInserts);
 
             if (participantError) {
+                console.error(
+                    "Erreur lors de l'ajout des participants:",
+                    participantError
+                );
                 return res
                     .status(500)
                     .json({ error: participantError.message });
             }
 
+            console.log("Participants ajoutés avec succès");
+
             res.json(conversation);
         } catch (error) {
+            console.error("Erreur dans createConversation:", error);
             res.status(500).json({ error: error.message });
         }
     },

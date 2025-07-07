@@ -11,7 +11,6 @@ const authController = {
         try {
             const { username, email, password } = req.body;
 
-            // Vérifier si l'utilisateur existe déjà
             const { data: existingUser } = await supabase
                 .from("users")
                 .select("id")
