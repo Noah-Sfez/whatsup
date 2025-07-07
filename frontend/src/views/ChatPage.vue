@@ -10,6 +10,38 @@
       </button>
     </div>
 
+    <!-- Indicateur de chargement -->
+    <div
+      v-if="loading"
+      class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20"
+    >
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div class="flex items-center space-x-3">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span class="text-lg font-medium text-gray-900 dark:text-white"
+            >Chargement des conversations...</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div v-if="error" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-20">
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg">
+        <div class="flex items-center">
+          <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fill-rule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <span class="font-medium">{{ error }}</span>
+          <button @click="error = ''" class="ml-4 text-red-500 hover:text-red-700">✕</button>
+        </div>
+      </div>
+    </div>
+
     <ChatSideBar
       :conversations="conversations"
       :activeConversationId="activeConversationId"
@@ -23,6 +55,20 @@
       :userId="currentUserId"
       @send="handleSendMessage"
     />
+    <div v-else class="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div class="text-center text-gray-500 dark:text-gray-400">
+        <svg class="h-16 w-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
+        </svg>
+        <p class="text-lg font-medium">Sélectionnez une conversation</p>
+        <p class="text-sm">ou créez-en une nouvelle pour commencer</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -36,30 +82,104 @@ import ChatWindow from '../components/ChatWindow.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Fake data temporaire
-const conversations = ref([
-  { id: '1', name: 'Alice', isOnline: true },
-  { id: '2', name: 'Bob', isOnline: false },
-])
+// États pour les conversations et messages
+const conversations = ref([])
+const messages = ref([])
+const loading = ref(false)
+const error = ref('')
 
-const messages = ref([
-  { id: 'm1', conversationId: '1', senderId: '1', text: 'Salut !', timestamp: Date.now() },
-  { id: 'm2', conversationId: '2', senderId: '2', text: 'Yo !', timestamp: Date.now() },
-])
+const currentUserId = computed(() => authStore.currentUser?.id || '')
+const activeConversationId = ref('')
 
-const currentUserId = computed(() => authStore.currentUser?.id || '1')
-const activeConversationId = ref('1')
+// Fonction pour récupérer les conversations depuis l'API
+const fetchConversations = async () => {
+  try {
+    loading.value = true
+    error.value = ''
 
-// Simuler le changement de statut en ligne
-function simulateOnlineStatus() {
-  setInterval(() => {
-    conversations.value.forEach((conv) => {
-      // Simuler un changement de statut aléatoire (20% de chance de changer)
-      if (Math.random() < 0.2) {
-        conv.isOnline = !conv.isOnline
-      }
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error("Token d'authentification manquant")
+    }
+
+    console.log('Récupération des conversations...')
+    const response = await fetch('http://localhost:3001/api/conversations', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     })
-  }, 5000) // Changer toutes les 5 secondes
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('Conversations récupérées:', data)
+
+    // Transformer les données pour l'affichage
+    conversations.value = data.map((conv) => ({
+      id: conv.id,
+      name: conv.name || 'Conversation sans nom',
+      isOnline: false, // À implémenter avec Socket.IO
+      is_group: conv.is_group,
+      created_at: conv.created_at,
+      participants: conv.conversation_participants || [],
+    }))
+
+    // Sélectionner la première conversation si elle existe
+    if (conversations.value.length > 0 && !activeConversationId.value) {
+      activeConversationId.value = conversations.value[0].id
+    }
+  } catch (err) {
+    console.error('Erreur lors de la récupération des conversations:', err)
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+// Fonction pour récupérer les messages d'une conversation
+const fetchMessages = async (conversationId) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    console.log('Récupération des messages pour:', conversationId)
+    const response = await fetch(
+      `http://localhost:3001/api/conversations/${conversationId}/messages`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('Messages récupérés:', data)
+
+    // Remplacer les messages existants pour cette conversation
+    messages.value = messages.value.filter((msg) => msg.conversationId !== conversationId)
+
+    // Ajouter les nouveaux messages
+    const newMessages = data.map((msg) => ({
+      id: msg.id,
+      conversationId: conversationId,
+      senderId: msg.sender_id,
+      text: msg.content,
+      timestamp: new Date(msg.created_at).getTime(),
+      username: msg.users?.username || 'Utilisateur',
+    }))
+
+    messages.value.push(...newMessages)
+  } catch (err) {
+    console.error('Erreur lors de la récupération des messages:', err)
+  }
 }
 
 const activeConversation = computed(() =>
@@ -70,99 +190,82 @@ const filteredMessages = computed(() =>
   messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
 )
 
-onMounted(() => {
-  activeConversationId.value = conversations.value[0]?.id
-  simulateOnlineStatus()
+onMounted(async () => {
+  console.log('Chargement initial des conversations...')
+  await fetchConversations()
 
-  // Optionnel : écouter les changements de statut en ligne via Socket.IO
-  // si vous voulez implémenter cela avec des vrais utilisateurs
-  // initSocketListeners()
+  // Charger les messages de la conversation active
+  if (activeConversationId.value) {
+    await fetchMessages(activeConversationId.value)
+  }
 })
-
-// Fonction pour initialiser les listeners Socket.IO (optionnel)
-function initSocketListeners() {
-  // Cette fonction peut être utilisée pour écouter les changements de statut
-  // en temps réel depuis le serveur Socket.IO
-  // socket.on('user_online', (userId) => {
-  //   const conversation = conversations.value.find(c => c.userId === userId)
-  //   if (conversation) {
-  //     conversation.isOnline = true
-  //   }
-  // })
-  // socket.on('user_offline', (userId) => {
-  //   const conversation = conversations.value.find(c => c.userId === userId)
-  //   if (conversation) {
-  //     conversation.isOnline = false
-  //   }
-  // })
-}
 
 function handleSelectConversation(id) {
   activeConversationId.value = id
+  // Charger les messages de la conversation sélectionnée
+  fetchMessages(id)
 }
 
-function handleAddConversation(conversationData) {
-  console.log('Création de conversation:', conversationData)
+async function handleAddConversation(conversationData) {
+  try {
+    console.log('Création de conversation:', conversationData)
 
-  // Générer un nouvel ID pour la conversation
-  const newId = Date.now().toString()
-
-  // Créer le nom de la conversation en utilisant les noms vérifiés
-  let conversationName
-  if (conversationData.isGroup) {
-    // Pour un groupe, utiliser le nom du groupe ou "Groupe" + noms d'utilisateurs
-    if (conversationData.groupName) {
-      conversationName = conversationData.groupName
-    } else {
-      const userNames = conversationData.emails.map(
-        (email) => conversationData.userNames[email] || email,
-      )
-      conversationName = `Groupe (${userNames.slice(0, 2).join(', ')}${userNames.length > 2 ? '...' : ''})`
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error("Token d'authentification manquant")
     }
-  } else {
-    // Pour une conversation individuelle, utiliser le nom de l'utilisateur ou l'email
-    const email = conversationData.emails[0]
-    conversationName = conversationData.userNames[email] || email
+
+    // Pour l'instant, on va créer une conversation factice
+    // jusqu'à ce que nous implémentions la logique de récupération des IDs d'utilisateurs
+    console.log('Données de conversation reçues:', conversationData)
+
+    // Recharger les conversations après création
+    await fetchConversations()
+  } catch (err) {
+    console.error('Erreur lors de la création de la conversation:', err)
+    error.value = err.message
   }
-
-  // Ajouter la nouvelle conversation
-  const newConversation = {
-    id: newId,
-    name: conversationName,
-    isGroup: conversationData.isGroup,
-    emails: conversationData.emails,
-    groupName: conversationData.groupName,
-    userNames: conversationData.userNames,
-  }
-
-  conversations.value.push(newConversation)
-
-  // Sélectionner automatiquement la nouvelle conversation
-  activeConversationId.value = newId
-
-  // Optionnel : ajouter un message de bienvenue
-  const welcomeMessage = conversationData.isGroup
-    ? `Groupe créé avec ${Object.values(conversationData.userNames).join(', ')}`
-    : `Conversation créée avec ${conversationName}`
-
-  messages.value.push({
-    id: Date.now().toString() + '_welcome',
-    conversationId: newId,
-    senderId: 'system',
-    text: welcomeMessage,
-    timestamp: Date.now(),
-    isSystem: true,
-  })
 }
 
-function handleSendMessage(text) {
-  messages.value.push({
-    id: Date.now().toString(),
-    conversationId: activeConversationId.value,
-    senderId: currentUserId.value,
-    text,
-    timestamp: Date.now(),
-  })
+async function handleSendMessage(text) {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    // Envoyer le message via l'API
+    const response = await fetch(
+      `http://localhost:3001/api/conversations/${activeConversationId.value}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: text,
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const newMessage = await response.json()
+    console.log('Message envoyé:', newMessage)
+
+    // Ajouter le message à la liste locale
+    messages.value.push({
+      id: newMessage.id,
+      conversationId: activeConversationId.value,
+      senderId: newMessage.sender_id,
+      text: newMessage.content,
+      timestamp: new Date(newMessage.created_at).getTime(),
+      username: newMessage.users?.username || 'Vous',
+    })
+  } catch (err) {
+    console.error("Erreur lors de l'envoi du message:", err)
+  }
 }
 
 function handleLogout() {
