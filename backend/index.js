@@ -14,7 +14,7 @@ const httpServer = createServer(app);
 // Configuration CORS
 app.use(
   cors({
-    origin: "http://localhost:5173", // URL de votre frontend Vite
+    origin: "http://localhost:5174", // URL de votre frontend Vite
     credentials: true,
   })
 );
@@ -24,7 +24,7 @@ app.use(express.json());
 // Configuration Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5174",
     methods: ["GET", "POST"],
     credentials: true,
   },
