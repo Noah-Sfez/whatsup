@@ -106,7 +106,6 @@ const handleSocketConnection = (io) => {
                 if (skipSave) {
                     const roomId = conversationId || groupId;
                     if (roomId) {
-                        // Créer un message temporaire pour la diffusion
                         const broadcastMessage = {
                             id: uuidv4(),
                             conversation_id: conversationId || null,
@@ -119,8 +118,8 @@ const handleSocketConnection = (io) => {
                             users: { username: socket.username, email: null },
                         };
 
-                        // Diffuser seulement (ne pas sauvegarder)
-                        socket.to(roomId).emit("new_message", broadcastMessage);
+                        // Remplace socket.to par io.to pour émettre à tous, y compris l'émetteur
+                        io.to(roomId).emit("new_message", broadcastMessage);
                         console.log(
                             `Message diffusé dans room ${roomId} sans sauvegarde`
                         );

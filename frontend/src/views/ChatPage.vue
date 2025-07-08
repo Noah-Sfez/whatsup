@@ -285,7 +285,6 @@ async function handleSendMessage(text) {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    // REST : sauvegarder en base
     const response = await fetch(
       `http://localhost:3001/api/conversations/${activeConversationId.value}/messages`,
       {
@@ -294,9 +293,7 @@ async function handleSendMessage(text) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          content: text,
-        }),
+        body: JSON.stringify({ content: text }),
       },
     )
 
@@ -305,27 +302,19 @@ async function handleSendMessage(text) {
       throw new Error(errData.error || `HTTP error! status: ${response.status}`)
     }
 
+    // Tu peux commenter la ligne qui ajoute le message localement
+    // messages.value.push(...) car la socket le fera
+
     // Envoie aussi en temps réel avec le socket (sans sauvegarder)
-    const newMessage = await response.json()
     socket.emit('send_message', {
       conversationId: activeConversationId.value,
       content: text,
       messageType: 'text',
-      skipSave: true, // Indiquer qu'il ne faut pas sauvegarder
-    })
-
-    // Ajouter le message localement pour l'affichage immédiat
-    messages.value.push({
-      id: newMessage.id,
-      conversationId: activeConversationId.value,
-      senderId: newMessage.user_id,
-      text: newMessage.content,
-      timestamp: new Date(newMessage.created_at).getTime(),
-      username: newMessage.users?.username || 'Vous',
-      email: newMessage.users?.email,
+      skipSave: true,
     })
   } catch (err) {
-    // Tu peux afficher une notif d'erreur ici
+    // Afficher une notif d'erreur ici si tu veux
+    console.error('Erreur envoi message:', err)
   }
 }
 
