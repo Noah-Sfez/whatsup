@@ -176,14 +176,37 @@ const fetchConversations = async () => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
     const data = await response.json()
-    conversations.value = data.map((conv) => ({
-      id: conv.id,
-      name: conv.name || 'Conversation sans nom',
-      isOnline: false,
-      is_group: conv.is_group,
-      created_at: conv.created_at,
-      participants: conv.conversation_participants || [],
-    }))
+    console.log('Conversations data:', data) // Pour déboguer
+
+    conversations.value = data.map((conv) => {
+      // Pour les conversations individuelles, on affiche le nom de l'autre participant
+      let displayName = conv.name || 'Conversation sans nom'
+
+      if (
+        !conv.is_group &&
+        conv.conversation_participants &&
+        conv.conversation_participants.length > 0
+      ) {
+        // Chercher l'autre participant (celui qui n'est pas l'utilisateur actuel)
+        const currentUserId = JSON.parse(atob(localStorage.getItem('token').split('.')[1])).userId
+        const otherParticipant = conv.conversation_participants.find(
+          (participant) => participant.user_id !== currentUserId,
+        )
+
+        if (otherParticipant && otherParticipant.users) {
+          displayName = otherParticipant.users.username || otherParticipant.users.email
+        }
+      }
+
+      return {
+        id: conv.id,
+        name: displayName,
+        isOnline: false,
+        is_group: conv.is_group,
+        created_at: conv.created_at,
+        participants: conv.conversation_participants || [],
+      }
+    })
 
     if (conversations.value.length > 0 && !activeConversationId.value) {
       activeConversationId.value = conversations.value[0].id

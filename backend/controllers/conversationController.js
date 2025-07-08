@@ -102,7 +102,10 @@ const conversationController = {
                 .select(
                     `
           *,
-          conversation_participants!inner(user_id),
+          conversation_participants!inner(
+            user_id,
+            users(id, username, email)
+          ),
           users!conversations_created_by_fkey(username)
         `
                 )
