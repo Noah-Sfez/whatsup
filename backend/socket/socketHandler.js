@@ -52,39 +52,144 @@ const handleSocketConnection = (io) => {
             }
         });
 
+        // Rejoindre une conversation
+        socket.on("join_conversation", async (conversationId) => {
+            try {
+                console.log(
+                    `Utilisateur ${socket.userId} tente de rejoindre la conversation ${conversationId}`
+                );
+
+                // Vérifier si l'utilisateur est participant de la conversation
+                const { data: participant } = await supabase
+                    .from("conversation_participants")
+                    .select("id")
+                    .eq("conversation_id", conversationId)
+                    .eq("user_id", socket.userId)
+                    .single();
+
+                if (participant) {
+                    socket.join(conversationId);
+                    socket.emit("joined_conversation", conversationId);
+                    console.log(
+                        `Utilisateur ${socket.userId} a rejoint la conversation ${conversationId}`
+                    );
+                } else {
+                    console.log(
+                        `Utilisateur ${socket.userId} n'est pas participant de la conversation ${conversationId}`
+                    );
+                    socket.emit(
+                        "error",
+                        "Not a participant of this conversation"
+                    );
+                }
+            } catch (error) {
+                console.error(`Erreur lors du join_conversation:`, error);
+                socket.emit("error", error.message);
+            }
+        });
+
         // Envoyer un message
         socket.on("send_message", async (data) => {
             try {
                 const {
                     groupId,
+                    conversationId,
                     content,
                     messageType = "text",
                     imageUrl,
                     imageName,
                     imageSize,
+                    skipSave = false,
                 } = data;
 
-                // Vérifier si l'utilisateur est membre du groupe
-                const { data: member } = await supabase
-                    .from("group_members")
-                    .select("id")
-                    .eq("group_id", groupId)
-                    .eq("user_id", socket.userId)
-                    .single();
+                // Si skipSave est true, ne faire que diffuser le message existant
+                if (skipSave) {
+                    const roomId = conversationId || groupId;
+                    if (roomId) {
+                        // Créer un message temporaire pour la diffusion
+                        const broadcastMessage = {
+                            id: uuidv4(),
+                            conversation_id: conversationId || null,
+                            group_id: groupId || null,
+                            user_id: socket.userId,
+                            sender_id: socket.userId,
+                            content: content,
+                            message_type: messageType,
+                            created_at: new Date().toISOString(),
+                            users: { username: socket.username, email: null },
+                        };
 
-                if (!member) {
-                    socket.emit("error", "Not a member of this group");
+                        // Diffuser seulement (ne pas sauvegarder)
+                        socket.to(roomId).emit("new_message", broadcastMessage);
+                        console.log(
+                            `Message diffusé dans room ${roomId} sans sauvegarde`
+                        );
+                    }
                     return;
+                }
+
+                // Reste du code existant pour sauvegarder...
+
+                // Déterminer si c'est un groupe ou une conversation
+                const isGroup = groupId && !conversationId;
+                const isConversation = conversationId && !groupId;
+
+                if (!isGroup && !isConversation) {
+                    socket.emit(
+                        "error",
+                        "Either groupId or conversationId must be provided"
+                    );
+                    return;
+                }
+
+                // Vérifier les permissions selon le type
+                let roomId;
+                if (isGroup) {
+                    const { data: member } = await supabase
+                        .from("group_members")
+                        .select("id")
+                        .eq("group_id", groupId)
+                        .eq("user_id", socket.userId)
+                        .single();
+
+                    if (!member) {
+                        socket.emit("error", "Not a member of this group");
+                        return;
+                    }
+                    roomId = groupId;
+                } else {
+                    const { data: participant } = await supabase
+                        .from("conversation_participants")
+                        .select("id")
+                        .eq("conversation_id", conversationId)
+                        .eq("user_id", socket.userId)
+                        .single();
+
+                    if (!participant) {
+                        socket.emit(
+                            "error",
+                            "Not a participant of this conversation"
+                        );
+                        return;
+                    }
+                    roomId = conversationId;
                 }
 
                 // Préparer les données du message selon le type
                 const messageData = {
                     id: uuidv4(),
-                    group_id: groupId,
                     user_id: socket.userId,
                     message_type: messageType,
                     created_at: new Date().toISOString(),
                 };
+
+                // Ajouter les IDs selon le type
+                if (isGroup) {
+                    messageData.group_id = groupId;
+                } else {
+                    messageData.conversation_id = conversationId;
+                    messageData.sender_id = socket.userId;
+                }
 
                 // Ajouter le contenu selon le type de message
                 if (messageType === "text") {
@@ -103,7 +208,7 @@ const handleSocketConnection = (io) => {
                     .select(
                         `
             *,
-            users(username)
+            users(username, email)
           `
                     )
                     .single();
@@ -113,8 +218,8 @@ const handleSocketConnection = (io) => {
                     return;
                 }
 
-                // Diffuser le message à tous les membres du groupe
-                io.to(groupId).emit("new_message", message);
+                // Diffuser le message à tous les membres du groupe/conversation
+                io.to(roomId).emit("new_message", message);
             } catch (error) {
                 socket.emit("error", error.message);
             }

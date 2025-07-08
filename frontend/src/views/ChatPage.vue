@@ -102,22 +102,47 @@ onMounted(() => {
     socket.emit('authenticate', token)
   }
 
+  // Listener pour les nouveaux messages
   socket.on('new_message', (msg) => {
+    console.log('Nouveau message reçu:', msg)
     // Ajouter le message seulement s'il est pour la conversation affichée
-    if (msg.conversation_id === activeConversationId.value) {
+    const messageConversationId = msg.conversation_id || msg.group_id
+    if (messageConversationId === activeConversationId.value) {
       messages.value.push({
         id: msg.id,
-        conversationId: msg.conversation_id,
-        senderId: msg.user_id,
+        conversationId: messageConversationId,
+        senderId: msg.user_id || msg.sender_id,
         text: msg.content,
         timestamp: new Date(msg.created_at).getTime(),
-        username: msg.users?.username || "Utilisateur",
+        username: msg.users?.username || 'Utilisateur',
         email: msg.users?.email,
       })
     }
   })
+
+  // Listener pour confirmer la connexion à une conversation
+  socket.on('joined_conversation', (conversationId) => {
+    console.log('Rejoint la conversation:', conversationId)
+  })
+
+  // Listener pour les erreurs
+  socket.on('error', (error) => {
+    console.error('Erreur socket:', error)
+  })
 })
 
+// Watcher pour gérer les changements de conversation active
+watch(
+  activeConversationId,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      console.log('Changement de conversation:', oldId, '->', newId)
+      // Rejoindre la nouvelle conversation
+      socket.emit('join_conversation', newId)
+    }
+  },
+  { immediate: true },
+) // Exécuter immédiatement même si pas de changement
 
 // Fonction pour récupérer les conversations depuis l'API
 const fetchConversations = async () => {
@@ -217,12 +242,14 @@ onMounted(async () => {
   await fetchConversations()
   if (activeConversationId.value) {
     await fetchMessages(activeConversationId.value)
+    // Le watcher se chargera d'émettre join_conversation
   }
 })
 
 function handleSelectConversation(id) {
   activeConversationId.value = id
   fetchMessages(id)
+  // Le watcher se chargera d'émettre join_conversation
 }
 
 async function handleAddConversation(conversationData) {
@@ -234,9 +261,9 @@ async function handleAddConversation(conversationData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(conversationData)
+      body: JSON.stringify(conversationData),
     })
 
     if (!response.ok) {
@@ -270,7 +297,7 @@ async function handleSendMessage(text) {
         body: JSON.stringify({
           content: text,
         }),
-      }
+      },
     )
 
     if (!response.ok) {
@@ -278,24 +305,25 @@ async function handleSendMessage(text) {
       throw new Error(errData.error || `HTTP error! status: ${response.status}`)
     }
 
-    // Envoie aussi en temps réel avec le socket
+    // Envoie aussi en temps réel avec le socket (sans sauvegarder)
+    const newMessage = await response.json()
     socket.emit('send_message', {
-      groupId: activeConversationId.value,
+      conversationId: activeConversationId.value,
       content: text,
-      messageType: "text"
+      messageType: 'text',
+      skipSave: true, // Indiquer qu'il ne faut pas sauvegarder
     })
 
-    // Option : tu peux enlever l'ajout direct ci-dessous pour ne pas dupliquer avec le socket :
-    // const newMessage = await response.json()
-    // messages.value.push({
-    //   id: newMessage.id,
-    //   conversationId: activeConversationId.value,
-    //   senderId: newMessage.user_id,
-    //   text: newMessage.content,
-    //   timestamp: new Date(newMessage.created_at).getTime(),
-    //   username: newMessage.users?.username || 'Vous',
-    //   email: newMessage.users?.email,
-    // })
+    // Ajouter le message localement pour l'affichage immédiat
+    messages.value.push({
+      id: newMessage.id,
+      conversationId: activeConversationId.value,
+      senderId: newMessage.user_id,
+      text: newMessage.content,
+      timestamp: new Date(newMessage.created_at).getTime(),
+      username: newMessage.users?.username || 'Vous',
+      email: newMessage.users?.email,
+    })
   } catch (err) {
     // Tu peux afficher une notif d'erreur ici
   }

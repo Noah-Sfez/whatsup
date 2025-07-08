@@ -144,7 +144,7 @@ const conversationController = {
                 .select(
                     `
                 *,
-                users:sender_id(username, email)
+                users:user_id(username, email)
                 `
                 )
                 .eq("conversation_id", conversationId)
@@ -194,6 +194,7 @@ const conversationController = {
                         id: uuidv4(),
                         conversation_id: conversationId,
                         user_id: req.user.userId,
+                        sender_id: req.user.userId,
                         content: content.trim(),
                         created_at: new Date().toISOString(),
                     },
@@ -201,7 +202,7 @@ const conversationController = {
                 .select(
                     `
                 *,
-                users:sender_id(username, email)
+                users:user_id(username, email)
                 `
                 )
                 .single();
