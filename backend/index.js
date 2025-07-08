@@ -35,7 +35,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Configuration Socket.IO
 const io = new Server(httpServer, {
     cors: {
-        origin: ["http://localhost:5173", "http://localhost:5174"],
+        origin: FRONTEND_URL,
         methods: ["GET", "POST"],
         credentials: true,
     },
@@ -53,6 +53,6 @@ handleSocketConnection(io);
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
-    console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`Backend running on port ${PORT}`);
     console.log(`Socket.IO server ready`);
 });
