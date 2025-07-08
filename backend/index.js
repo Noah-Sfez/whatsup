@@ -17,11 +17,12 @@ const handleSocketConnection = require("./socket/socketHandler");
 
 const app = express();
 const httpServer = createServer(app);
+const FRONTEND_URL = process.env.FRONTEND_URL || "*";
 
 // Configuration CORS
 app.use(
     cors({
-        origin: ["http://localhost:5173", "http://localhost:5174"],
+        origin: FRONTEND_URL,
         credentials: true,
     })
 );
