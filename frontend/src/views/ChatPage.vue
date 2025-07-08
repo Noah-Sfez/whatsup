@@ -84,21 +84,22 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const conversations = ref([])
-const messages = ref([]) // ce tableau contient tous les messages de toutes les conversations déjà chargées
+const messages = ref([]) // Contient tous les messages déjà chargés
 const loading = ref(false)
 const error = ref('')
 
 const currentUserId = computed(() => authStore.currentUser?.id || '')
 const activeConversationId = ref('')
 
+// Pour savoir quelles rooms on a déjà rejoint
+const joinedRooms = ref({})
+
 // SOCKET.IO : Initialisation
 const socket = io('http://localhost:3001', {
   autoConnect: false,
 })
 
-/**
- * --- SOCKET IO LOGIC ---
- */
+// --- SOCKET IO LOGIC ---
 function addMessageIfNotExists(msg) {
   if (!messages.value.some(m => m.id === msg.id)) {
     messages.value.push({
@@ -121,12 +122,13 @@ onMounted(async () => {
     socket.emit('authenticate', token)
   }
 
-  // Anti-multi-listener : Retire tout avant d'ajouter (au cas où le hot reload de Vite ferait des bêtises)
   socket.off('new_message')
   socket.on('new_message', addMessageIfNotExists)
 
   socket.off('joined_conversation')
-  socket.on('joined_conversation', (conversationId) => {})
+  socket.on('joined_conversation', (conversationId) => {
+    joinedRooms.value[conversationId] = true
+  })
 
   socket.off('error')
   socket.on('error', (errorMsg) => { error.value = errorMsg })
@@ -135,27 +137,27 @@ onMounted(async () => {
   await fetchConversations()
   if (activeConversationId.value) {
     await fetchMessages(activeConversationId.value)
+    // !! CORRECTION ICI : On "join" aussi la première conversation dès le montage
     socket.emit('join_conversation', activeConversationId.value)
+    joinedRooms.value[activeConversationId.value] = false // En attente de confirmation "joined_conversation"
   }
 })
 
-/**
- * --- CONVERSATION CHANGE WATCHER ---
- */
+// --- CONVERSATION CHANGE WATCHER ---
 watch(
   activeConversationId,
   async (newId, oldId) => {
     if (newId && newId !== oldId) {
       await fetchMessages(newId)
+      // On "join" la nouvelle room à chaque changement
       socket.emit('join_conversation', newId)
+      joinedRooms.value[newId] = false // On attend confirmation
     }
   },
-  { immediate: false },
+  { immediate: true } // !! Correction ici : le watcher s'exécute aussi au premier affichage
 )
 
-/**
- * --- API CALLS ---
- */
+// --- API CALLS ---
 const fetchConversations = async () => {
   try {
     loading.value = true
@@ -211,7 +213,6 @@ const fetchMessages = async (conversationId) => {
     const filtered = messages.value.filter(msg => msg.conversationId !== conversationId)
     messages.value = filtered
 
-    // On ajoute chaque message S'IL N'EXISTE PAS DÉJÀ (normalement, tous seront ajoutés vu le filter ci-dessus)
     data.forEach(msg => addMessageIfNotExists({
       ...msg,
       conversation_id: conversationId // pour cohérence d'accès
@@ -221,9 +222,7 @@ const fetchMessages = async (conversationId) => {
   }
 }
 
-/**
- * --- COMPUTED PROPS ---
- */
+// --- COMPUTED PROPS ---
 const activeConversation = computed(() =>
   conversations.value.find((c) => c.id === activeConversationId.value),
 )
@@ -232,9 +231,7 @@ const filteredMessages = computed(() =>
   messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
 )
 
-/**
- * --- EVENT HANDLERS ---
- */
+// --- EVENT HANDLERS ---
 function handleSelectConversation(id) {
   activeConversationId.value = id
 }
@@ -267,12 +264,16 @@ async function handleAddConversation(conversationData) {
 // --- ENVOI DE MESSAGE PAR SOCKET ---
 function handleSendMessage(text) {
   if (!text || !activeConversationId.value) return
+  // !! ATTENTION : On attend d'être bien dans la room
+  if (!joinedRooms.value[activeConversationId.value]) {
+    // Optionnel : tu peux afficher un petit "patiente, connexion..."
+    return
+  }
   socket.emit('send_message', {
     conversationId: activeConversationId.value,
     content: text,
     messageType: 'text',
   })
-  // Ne jamais ajouter localement : on attend l'event 'new_message' (anti-doublon).
 }
 
 function handleLogout() {

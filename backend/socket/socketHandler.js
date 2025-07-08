@@ -88,14 +88,12 @@ const handleSocketConnection = (io) => {
                     return;
                 }
 
-                // Temps réel : broadcast dans la room
                 io.to(conversationId).emit("new_message", message);
             } catch (error) {
                 socket.emit("error", error.message);
             }
         });
 
-        // Déconnexion
         socket.on("disconnect", async () => {
             if (socket.userId) {
                 await supabase
