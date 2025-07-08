@@ -104,10 +104,18 @@ onMounted(() => {
 
   // Listener pour les nouveaux messages
   socket.on('new_message', (msg) => {
-    console.log('Nouveau message reçu:', msg)
+    console.log('🔥 Nouveau message reçu:', msg)
     // Ajouter le message seulement s'il est pour la conversation affichée
     const messageConversationId = msg.conversation_id || msg.group_id
+    console.log(
+      '📍 Message pour conversation:',
+      messageConversationId,
+      'conversation active:',
+      activeConversationId.value,
+    )
+
     if (messageConversationId === activeConversationId.value) {
+      console.log('✅ Ajout du message à la conversation active')
       messages.value.push({
         id: msg.id,
         conversationId: messageConversationId,
@@ -117,6 +125,8 @@ onMounted(() => {
         username: msg.users?.username || 'Utilisateur',
         email: msg.users?.email,
       })
+    } else {
+      console.log('❌ Message ignoré car pas pour la conversation active')
     }
   })
 
@@ -311,6 +321,14 @@ async function handleSendMessage(text) {
       content: text,
       messageType: 'text',
       skipSave: true,
+    })
+
+    // Diffuser aux autres utilisateurs via socket (sans sauvegarder)
+    socket.emit('send_message', {
+      conversationId: activeConversationId.value,
+      content: text,
+      messageType: 'text',
+      skipSave: true, // Indiquer qu'il ne faut pas sauvegarder
     })
   } catch (err) {
     // Afficher une notif d'erreur ici si tu veux

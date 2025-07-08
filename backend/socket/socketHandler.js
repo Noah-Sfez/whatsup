@@ -71,11 +71,19 @@ const handleSocketConnection = (io) => {
                     socket.join(conversationId);
                     socket.emit("joined_conversation", conversationId);
                     console.log(
-                        `Utilisateur ${socket.userId} a rejoint la conversation ${conversationId}`
+                        `✅ Utilisateur ${socket.userId} a rejoint la conversation ${conversationId}`
+                    );
+
+                    // Log des utilisateurs dans cette room
+                    const roomSockets =
+                        io.sockets.adapter.rooms.get(conversationId);
+                    console.log(
+                        `📍 Utilisateurs dans la conversation ${conversationId}:`,
+                        roomSockets ? roomSockets.size : 0
                     );
                 } else {
                     console.log(
-                        `Utilisateur ${socket.userId} n'est pas participant de la conversation ${conversationId}`
+                        `❌ Utilisateur ${socket.userId} n'est pas participant de la conversation ${conversationId}`
                     );
                     socket.emit(
                         "error",
@@ -121,7 +129,7 @@ const handleSocketConnection = (io) => {
                         // Remplace socket.to par io.to pour émettre à tous, y compris l'émetteur
                         io.to(roomId).emit("new_message", broadcastMessage);
                         console.log(
-                            `Message diffusé dans room ${roomId} sans sauvegarde`
+                            `Message diffusé dans room ${roomId} aux autres utilisateurs (pas l'expéditeur)`
                         );
                     }
                     return;
