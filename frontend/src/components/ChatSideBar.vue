@@ -222,7 +222,7 @@ const checkUserExists = async (email) => {
     }
 
     const response = await fetch(
-      `http://localhost:3001/api/users/search?email=${encodeURIComponent(email)}`,
+      `${import.meta.env.VITE_API_BASE_URL}/api/users/search?email=${encodeURIComponent(email)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -253,7 +253,7 @@ const checkAllUsersAtOnce = async (emails) => {
       throw new Error('No authentication token')
     }
 
-    const response = await fetch('http://localhost:3001/api/users/check', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/check`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -391,13 +391,13 @@ const createConversation = () => {
 
   // Récupère les userId
   const participants = userCheckResults.value
-    .filter(result => result.exists && result.user && result.user.id)
-    .map(result => result.user.id);
+    .filter((result) => result.exists && result.user && result.user.id)
+    .map((result) => result.user.id)
 
   const conversationData = {
     participants, // des userId, pas des emails !
     name: emailList.value.length > 1 ? groupName.value : null,
-    is_group: emailList.value.length > 1
+    is_group: emailList.value.length > 1,
   }
 
   emit('add-conversation', conversationData)

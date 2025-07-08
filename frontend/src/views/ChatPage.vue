@@ -95,13 +95,13 @@ const activeConversationId = ref('')
 const joinedRooms = ref({})
 
 // SOCKET.IO : Initialisation
-const socket = io('http://localhost:3001', {
+const socket = io(import.meta.env.VITE_API_BASE_URL, {
   autoConnect: false,
 })
 
 // --- SOCKET IO LOGIC ---
 function addMessageIfNotExists(msg) {
-  if (!messages.value.some(m => m.id === msg.id)) {
+  if (!messages.value.some((m) => m.id === msg.id)) {
     messages.value.push({
       id: msg.id,
       conversationId: msg.conversation_id || msg.group_id,
@@ -131,7 +131,9 @@ onMounted(async () => {
   })
 
   socket.off('error')
-  socket.on('error', (errorMsg) => { error.value = errorMsg })
+  socket.on('error', (errorMsg) => {
+    error.value = errorMsg
+  })
 
   // Initial fetch
   await fetchConversations()
@@ -154,7 +156,7 @@ watch(
       joinedRooms.value[newId] = false // On attend confirmation
     }
   },
-  { immediate: true } // !! Correction ici : le watcher s'exécute aussi au premier affichage
+  { immediate: true }, // !! Correction ici : le watcher s'exécute aussi au premier affichage
 )
 
 // --- API CALLS ---
@@ -165,7 +167,7 @@ const fetchConversations = async () => {
     const token = localStorage.getItem('token')
     if (!token) throw new Error("Token d'authentification manquant")
 
-    const response = await fetch('http://localhost:3001/api/conversations', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/conversations`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -198,7 +200,7 @@ const fetchMessages = async (conversationId) => {
     const token = localStorage.getItem('token')
     if (!token) return
     const response = await fetch(
-      `http://localhost:3001/api/conversations/${conversationId}/messages`,
+      `${import.meta.env.VITE_API_BASE_URL}/api/conversations/${conversationId}/messages`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -210,13 +212,15 @@ const fetchMessages = async (conversationId) => {
     const data = await response.json()
 
     // On retire les messages de cette conv (pour éviter les doublons avec les anciens)
-    const filtered = messages.value.filter(msg => msg.conversationId !== conversationId)
+    const filtered = messages.value.filter((msg) => msg.conversationId !== conversationId)
     messages.value = filtered
 
-    data.forEach(msg => addMessageIfNotExists({
-      ...msg,
-      conversation_id: conversationId // pour cohérence d'accès
-    }))
+    data.forEach((msg) =>
+      addMessageIfNotExists({
+        ...msg,
+        conversation_id: conversationId, // pour cohérence d'accès
+      }),
+    )
   } catch (err) {
     // Pas de notif ici, mais tu peux en ajouter si tu veux
   }
@@ -241,7 +245,7 @@ async function handleAddConversation(conversationData) {
     const token = localStorage.getItem('token')
     if (!token) throw new Error("Token d'authentification manquant")
 
-    const response = await fetch('http://localhost:3001/api/conversations', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/conversations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
