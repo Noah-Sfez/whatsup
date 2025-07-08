@@ -84,7 +84,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const conversations = ref([])
-const messages = ref([])
+const messages = ref([]) // ce tableau contient tous les messages de toutes les conversations déjà chargées
 const loading = ref(false)
 const error = ref('')
 
@@ -96,6 +96,23 @@ const socket = io('http://localhost:3001', {
   autoConnect: false,
 })
 
+/**
+ * --- SOCKET IO LOGIC ---
+ */
+function addMessageIfNotExists(msg) {
+  if (!messages.value.some(m => m.id === msg.id)) {
+    messages.value.push({
+      id: msg.id,
+      conversationId: msg.conversation_id || msg.group_id,
+      senderId: msg.user_id || msg.sender_id,
+      text: msg.content,
+      timestamp: new Date(msg.created_at).getTime(),
+      username: msg.users?.username || 'Utilisateur',
+      email: msg.users?.email,
+    })
+  }
+}
+
 onMounted(async () => {
   // Authentification socket.io après login
   const token = localStorage.getItem('token')
@@ -104,28 +121,15 @@ onMounted(async () => {
     socket.emit('authenticate', token)
   }
 
-  // Listener pour les nouveaux messages
-  socket.on('new_message', (msg) => {
-    const messageConversationId = msg.conversation_id || msg.group_id
-    // Ajoute toujours, et l'affichage se fait via filteredMessages
-    messages.value.push({
-      id: msg.id,
-      conversationId: messageConversationId,
-      senderId: msg.user_id || msg.sender_id,
-      text: msg.content,
-      timestamp: new Date(msg.created_at).getTime(),
-      username: msg.users?.username || 'Utilisateur',
-      email: msg.users?.email,
-    })
-  })
+  // Anti-multi-listener : Retire tout avant d'ajouter (au cas où le hot reload de Vite ferait des bêtises)
+  socket.off('new_message')
+  socket.on('new_message', addMessageIfNotExists)
 
-  socket.on('joined_conversation', (conversationId) => {
-    // Optionnel : tu peux mettre un toast ou autre ici
-  })
+  socket.off('joined_conversation')
+  socket.on('joined_conversation', (conversationId) => {})
 
-  socket.on('error', (errorMsg) => {
-    error.value = errorMsg
-  })
+  socket.off('error')
+  socket.on('error', (errorMsg) => { error.value = errorMsg })
 
   // Initial fetch
   await fetchConversations()
@@ -135,7 +139,9 @@ onMounted(async () => {
   }
 })
 
-// Watcher pour les changements de conversation
+/**
+ * --- CONVERSATION CHANGE WATCHER ---
+ */
 watch(
   activeConversationId,
   async (newId, oldId) => {
@@ -147,6 +153,9 @@ watch(
   { immediate: false },
 )
 
+/**
+ * --- API CALLS ---
+ */
 const fetchConversations = async () => {
   try {
     loading.value = true
@@ -172,7 +181,6 @@ const fetchConversations = async () => {
       participants: conv.conversation_participants || [],
     }))
 
-    // Sélectionner la première conversation par défaut
     if (conversations.value.length > 0 && !activeConversationId.value) {
       activeConversationId.value = conversations.value[0].id
     }
@@ -199,25 +207,23 @@ const fetchMessages = async (conversationId) => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
     const data = await response.json()
 
-    // Remplace tous les messages pour cette conversation
-    // (évite les doublons quand tu reviens sur une conv)
-    messages.value = messages.value.filter((msg) => msg.conversationId !== conversationId)
+    // On retire les messages de cette conv (pour éviter les doublons avec les anciens)
+    const filtered = messages.value.filter(msg => msg.conversationId !== conversationId)
+    messages.value = filtered
 
-    const newMessages = data.map((msg) => ({
-      id: msg.id,
-      conversationId: conversationId,
-      senderId: msg.user_id,
-      text: msg.content,
-      timestamp: new Date(msg.created_at).getTime(),
-      username: msg.users?.username || 'Utilisateur',
-      email: msg.users?.email,
+    // On ajoute chaque message S'IL N'EXISTE PAS DÉJÀ (normalement, tous seront ajoutés vu le filter ci-dessus)
+    data.forEach(msg => addMessageIfNotExists({
+      ...msg,
+      conversation_id: conversationId // pour cohérence d'accès
     }))
-    messages.value.push(...newMessages)
   } catch (err) {
     // Pas de notif ici, mais tu peux en ajouter si tu veux
   }
 }
 
+/**
+ * --- COMPUTED PROPS ---
+ */
 const activeConversation = computed(() =>
   conversations.value.find((c) => c.id === activeConversationId.value),
 )
@@ -226,9 +232,11 @@ const filteredMessages = computed(() =>
   messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
 )
 
+/**
+ * --- EVENT HANDLERS ---
+ */
 function handleSelectConversation(id) {
   activeConversationId.value = id
-  // fetchMessages sera appelé automatiquement par le watcher
 }
 
 async function handleAddConversation(conversationData) {
@@ -256,7 +264,7 @@ async function handleAddConversation(conversationData) {
   }
 }
 
-// --- ENVOI DE MESSAGE EN TEMPS RÉEL UNIQUEMENT PAR SOCKET ---
+// --- ENVOI DE MESSAGE PAR SOCKET ---
 function handleSendMessage(text) {
   if (!text || !activeConversationId.value) return
   socket.emit('send_message', {
@@ -264,7 +272,7 @@ function handleSendMessage(text) {
     content: text,
     messageType: 'text',
   })
-  // Ne pas ajouter localement ! Attendre le retour du serveur (temps réel propre)
+  // Ne jamais ajouter localement : on attend l'event 'new_message' (anti-doublon).
 }
 
 function handleLogout() {
