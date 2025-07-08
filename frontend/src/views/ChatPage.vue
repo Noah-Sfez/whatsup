@@ -83,7 +83,6 @@ import { io } from 'socket.io-client'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// États pour les conversations et messages
 const conversations = ref([])
 const messages = ref([])
 const loading = ref(false)
@@ -93,77 +92,67 @@ const currentUserId = computed(() => authStore.currentUser?.id || '')
 const activeConversationId = ref('')
 
 // SOCKET.IO : Initialisation
-const socket = io('http://localhost:3001')
+const socket = io('http://localhost:3001', {
+  autoConnect: false,
+})
 
-// Auth à la connexion socket
-onMounted(() => {
+onMounted(async () => {
+  // Authentification socket.io après login
   const token = localStorage.getItem('token')
   if (token) {
+    socket.connect()
     socket.emit('authenticate', token)
   }
 
   // Listener pour les nouveaux messages
   socket.on('new_message', (msg) => {
-    console.log('🔥 Nouveau message reçu:', msg)
-    // Ajouter le message seulement s'il est pour la conversation affichée
     const messageConversationId = msg.conversation_id || msg.group_id
-    console.log(
-      '📍 Message pour conversation:',
-      messageConversationId,
-      'conversation active:',
-      activeConversationId.value,
-    )
-
-    if (messageConversationId === activeConversationId.value) {
-      console.log('✅ Ajout du message à la conversation active')
-      messages.value.push({
-        id: msg.id,
-        conversationId: messageConversationId,
-        senderId: msg.user_id || msg.sender_id,
-        text: msg.content,
-        timestamp: new Date(msg.created_at).getTime(),
-        username: msg.users?.username || 'Utilisateur',
-        email: msg.users?.email,
-      })
-    } else {
-      console.log('❌ Message ignoré car pas pour la conversation active')
-    }
+    // Ajoute toujours, et l'affichage se fait via filteredMessages
+    messages.value.push({
+      id: msg.id,
+      conversationId: messageConversationId,
+      senderId: msg.user_id || msg.sender_id,
+      text: msg.content,
+      timestamp: new Date(msg.created_at).getTime(),
+      username: msg.users?.username || 'Utilisateur',
+      email: msg.users?.email,
+    })
   })
 
-  // Listener pour confirmer la connexion à une conversation
   socket.on('joined_conversation', (conversationId) => {
-    console.log('Rejoint la conversation:', conversationId)
+    // Optionnel : tu peux mettre un toast ou autre ici
   })
 
-  // Listener pour les erreurs
-  socket.on('error', (error) => {
-    console.error('Erreur socket:', error)
+  socket.on('error', (errorMsg) => {
+    error.value = errorMsg
   })
+
+  // Initial fetch
+  await fetchConversations()
+  if (activeConversationId.value) {
+    await fetchMessages(activeConversationId.value)
+    socket.emit('join_conversation', activeConversationId.value)
+  }
 })
 
-// Watcher pour gérer les changements de conversation active
+// Watcher pour les changements de conversation
 watch(
   activeConversationId,
-  (newId, oldId) => {
+  async (newId, oldId) => {
     if (newId && newId !== oldId) {
-      console.log('Changement de conversation:', oldId, '->', newId)
-      // Rejoindre la nouvelle conversation
+      await fetchMessages(newId)
       socket.emit('join_conversation', newId)
     }
   },
-  { immediate: true },
-) // Exécuter immédiatement même si pas de changement
+  { immediate: false },
+)
 
-// Fonction pour récupérer les conversations depuis l'API
 const fetchConversations = async () => {
   try {
     loading.value = true
     error.value = ''
-
     const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error("Token d'authentification manquant")
-    }
+    if (!token) throw new Error("Token d'authentification manquant")
 
     const response = await fetch('http://localhost:3001/api/conversations', {
       headers: {
@@ -171,13 +160,9 @@ const fetchConversations = async () => {
         'Content-Type': 'application/json',
       },
     })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
     const data = await response.json()
-
     conversations.value = data.map((conv) => ({
       id: conv.id,
       name: conv.name || 'Conversation sans nom',
@@ -187,7 +172,7 @@ const fetchConversations = async () => {
       participants: conv.conversation_participants || [],
     }))
 
-    // Sélectionner la première conversation si elle existe
+    // Sélectionner la première conversation par défaut
     if (conversations.value.length > 0 && !activeConversationId.value) {
       activeConversationId.value = conversations.value[0].id
     }
@@ -198,12 +183,10 @@ const fetchConversations = async () => {
   }
 }
 
-// Fonction pour récupérer les messages d'une conversation
 const fetchMessages = async (conversationId) => {
   try {
     const token = localStorage.getItem('token')
     if (!token) return
-
     const response = await fetch(
       `http://localhost:3001/api/conversations/${conversationId}/messages`,
       {
@@ -213,17 +196,13 @@ const fetchMessages = async (conversationId) => {
         },
       },
     )
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
     const data = await response.json()
 
-    // Remplacer les messages existants pour cette conversation
+    // Remplace tous les messages pour cette conversation
+    // (évite les doublons quand tu reviens sur une conv)
     messages.value = messages.value.filter((msg) => msg.conversationId !== conversationId)
 
-    // Ajouter les nouveaux messages
     const newMessages = data.map((msg) => ({
       id: msg.id,
       conversationId: conversationId,
@@ -233,10 +212,9 @@ const fetchMessages = async (conversationId) => {
       username: msg.users?.username || 'Utilisateur',
       email: msg.users?.email,
     }))
-
     messages.value.push(...newMessages)
   } catch (err) {
-    // Tu peux mettre une notif ici si tu veux
+    // Pas de notif ici, mais tu peux en ajouter si tu veux
   }
 }
 
@@ -248,18 +226,9 @@ const filteredMessages = computed(() =>
   messages.value.filter((msg) => msg.conversationId === activeConversationId.value),
 )
 
-onMounted(async () => {
-  await fetchConversations()
-  if (activeConversationId.value) {
-    await fetchMessages(activeConversationId.value)
-    // Le watcher se chargera d'émettre join_conversation
-  }
-})
-
 function handleSelectConversation(id) {
   activeConversationId.value = id
-  fetchMessages(id)
-  // Le watcher se chargera d'émettre join_conversation
+  // fetchMessages sera appelé automatiquement par le watcher
 }
 
 async function handleAddConversation(conversationData) {
@@ -281,59 +250,21 @@ async function handleAddConversation(conversationData) {
       throw new Error(errorData.error || 'Erreur lors de la création')
     }
 
-    const newConversation = await response.json()
     await fetchConversations()
   } catch (err) {
     error.value = err.message
   }
 }
 
-// --- ENVOI DE MESSAGE ---
-
-async function handleSendMessage(text) {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) return
-
-    const response = await fetch(
-      `http://localhost:3001/api/conversations/${activeConversationId.value}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: text }),
-      },
-    )
-
-    if (!response.ok) {
-      const errData = await response.json()
-      throw new Error(errData.error || `HTTP error! status: ${response.status}`)
-    }
-
-    // Tu peux commenter la ligne qui ajoute le message localement
-    // messages.value.push(...) car la socket le fera
-
-    // Envoie aussi en temps réel avec le socket (sans sauvegarder)
-    socket.emit('send_message', {
-      conversationId: activeConversationId.value,
-      content: text,
-      messageType: 'text',
-      skipSave: true,
-    })
-
-    // Diffuser aux autres utilisateurs via socket (sans sauvegarder)
-    socket.emit('send_message', {
-      conversationId: activeConversationId.value,
-      content: text,
-      messageType: 'text',
-      skipSave: true, // Indiquer qu'il ne faut pas sauvegarder
-    })
-  } catch (err) {
-    // Afficher une notif d'erreur ici si tu veux
-    console.error('Erreur envoi message:', err)
-  }
+// --- ENVOI DE MESSAGE EN TEMPS RÉEL UNIQUEMENT PAR SOCKET ---
+function handleSendMessage(text) {
+  if (!text || !activeConversationId.value) return
+  socket.emit('send_message', {
+    conversationId: activeConversationId.value,
+    content: text,
+    messageType: 'text',
+  })
+  // Ne pas ajouter localement ! Attendre le retour du serveur (temps réel propre)
 }
 
 function handleLogout() {
