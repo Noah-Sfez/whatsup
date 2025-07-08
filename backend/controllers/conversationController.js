@@ -2,12 +2,10 @@ const { v4: uuidv4 } = require("uuid");
 const supabase = require("../config/database");
 
 const conversationController = {
-    // Créer une conversation
     createConversation: async (req, res) => {
         try {
             const { participants, name, is_group } = req.body;
 
-            // Validation des données d'entrée
             if (
                 !participants ||
                 !Array.isArray(participants) ||
@@ -27,7 +25,6 @@ const conversationController = {
 
             const conversationId = uuidv4();
 
-            // Créer la conversation
             const { data: conversation, error } = await supabase
                 .from("conversations")
                 .insert([
@@ -53,14 +50,12 @@ const conversationController = {
 
             console.log("Conversation créée avec succès:", conversation);
 
-            // Ajouter les participants
             const participantInserts = participants.map((participantId) => ({
                 conversation_id: conversationId,
                 user_id: participantId,
                 joined_at: new Date().toISOString(),
             }));
 
-            // Ajouter aussi le créateur s'il n'est pas déjà dans la liste
             if (!participants.includes(req.user.userId)) {
                 participantInserts.push({
                     conversation_id: conversationId,
@@ -94,7 +89,6 @@ const conversationController = {
         }
     },
 
-    // Récupérer les conversations
     getConversations: async (req, res) => {
         try {
             const { data: conversations, error } = await supabase
@@ -122,12 +116,10 @@ const conversationController = {
         }
     },
 
-    // Récupérer les messages d'une conversation
     getMessages: async (req, res) => {
         try {
             const { conversationId } = req.params;
 
-            // Vérifier si l'utilisateur est participant de la conversation
             const { data: participant } = await supabase
                 .from("conversation_participants")
                 .select("id")
@@ -141,7 +133,6 @@ const conversationController = {
                     .json({ error: "Not a participant of this conversation" });
             }
 
-            // Récupérer les messages
             const { data: messages, error } = await supabase
                 .from("messages")
                 .select(

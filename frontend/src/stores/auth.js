@@ -9,11 +9,9 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref('')
 
-  // Computed
   const isAuthenticated = computed(() => !!token.value)
   const currentUser = computed(() => user.value)
 
-  // Actions
   const login = async (email, password) => {
     try {
       error.value = ''
@@ -36,7 +34,6 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.token
       user.value = data.user
 
-      // Sauvegarder le token dans localStorage
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
 
@@ -71,7 +68,6 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.token
       user.value = data.user
 
-      // Sauvegarder le token dans localStorage
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
 
@@ -93,7 +89,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initAuth = () => {
-    // Récupérer les données depuis localStorage au démarrage
     const savedToken = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
 
@@ -107,7 +102,6 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = ''
   }
 
-  // Utilitaire pour les requêtes authentifiées
   const authenticatedFetch = async (url, options = {}) => {
     const headers = {
       'Content-Type': 'application/json',

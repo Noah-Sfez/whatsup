@@ -1,7 +1,6 @@
 const supabase = require("../config/database");
 
 const userController = {
-    // Récupérer tous les utilisateurs
     getAllUsers: async (req, res) => {
         try {
             const { data: users, error } = await supabase
@@ -19,7 +18,6 @@ const userController = {
         }
     },
 
-    // Rechercher des utilisateurs par email
     searchUserByEmail: async (req, res) => {
         try {
             const { email } = req.query;
@@ -40,7 +38,6 @@ const userController = {
 
             if (error) {
                 if (error.code === "PGRST116") {
-                    // Aucun utilisateur trouvé
                     return res.status(404).json({ error: "User not found" });
                 }
                 return res.status(500).json({ error: error.message });
@@ -52,7 +49,6 @@ const userController = {
         }
     },
 
-    // Vérifier l'existence de plusieurs utilisateurs
     checkUsers: async (req, res) => {
         try {
             const { emails } = req.body;
@@ -75,7 +71,6 @@ const userController = {
                 return res.status(500).json({ error: error.message });
             }
 
-            // Créer un objet de résultats avec tous les emails demandés
             const results = emails.map((email) => {
                 const user = users.find(
                     (u) => u.email.toLowerCase() === email.toLowerCase()

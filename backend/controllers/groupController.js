@@ -2,13 +2,11 @@ const { v4: uuidv4 } = require("uuid");
 const supabase = require("../config/database");
 
 const groupController = {
-    // Créer un groupe
     createGroup: async (req, res) => {
         try {
             const { name, description } = req.body;
             const groupId = uuidv4();
 
-            // Créer le groupe
             const { data: group, error } = await supabase
                 .from("groups")
                 .insert([
@@ -27,7 +25,6 @@ const groupController = {
                 return res.status(500).json({ error: error.message });
             }
 
-            // Ajouter le créateur comme membre du groupe
             await supabase.from("group_members").insert([
                 {
                     group_id: groupId,
@@ -43,7 +40,6 @@ const groupController = {
         }
     },
 
-    // Récupérer les groupes
     getGroups: async (req, res) => {
         try {
             const { data: groups, error } = await supabase
@@ -67,12 +63,10 @@ const groupController = {
         }
     },
 
-    // Rejoindre un groupe
     joinGroup: async (req, res) => {
         try {
             const { groupId } = req.params;
 
-            // Vérifier si l'utilisateur est déjà membre
             const { data: existingMember } = await supabase
                 .from("group_members")
                 .select("id")
@@ -84,7 +78,6 @@ const groupController = {
                 return res.status(400).json({ error: "Already a member" });
             }
 
-            // Ajouter l'utilisateur au groupe
             const { error } = await supabase.from("group_members").insert([
                 {
                     group_id: groupId,
@@ -104,12 +97,10 @@ const groupController = {
         }
     },
 
-    // Récupérer les messages d'un groupe
     getGroupMessages: async (req, res) => {
         try {
             const { groupId } = req.params;
 
-            // Vérifier si l'utilisateur est membre du groupe
             const { data: member } = await supabase
                 .from("group_members")
                 .select("id")
@@ -123,7 +114,6 @@ const groupController = {
                     .json({ error: "Not a member of this group" });
             }
 
-            // Récupérer les messages
             const { data: messages, error } = await supabase
                 .from("messages")
                 .select(

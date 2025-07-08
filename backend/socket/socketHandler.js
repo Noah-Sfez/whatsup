@@ -26,7 +26,6 @@ const handleSocketConnection = (io) => {
             }
         });
 
-        // Rejoindre une conversation (room)
         socket.on("join_conversation", async (conversationId) => {
             const { data: participant } = await supabase
                 .from("conversation_participants")
@@ -42,7 +41,6 @@ const handleSocketConnection = (io) => {
             }
         });
 
-        // Envoyer un message via socket (temps réel !)
         socket.on("send_message", async (data) => {
             try {
                 const { conversationId, content } = data;
@@ -51,7 +49,6 @@ const handleSocketConnection = (io) => {
                     return;
                 }
 
-                // Vérifie participant
                 const { data: participant } = await supabase
                     .from("conversation_participants")
                     .select("id")
@@ -67,7 +64,6 @@ const handleSocketConnection = (io) => {
                     return;
                 }
 
-                // Sauvegarde dans la DB
                 const { data: message, error } = await supabase
                     .from("messages")
                     .insert([

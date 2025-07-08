@@ -1,5 +1,4 @@
 <template>
-  <!-- Message système -->
   <div v-if="message.isSystem" class="flex justify-center mb-4">
     <div
       class="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full text-xs"
@@ -8,7 +7,6 @@
     </div>
   </div>
 
-  <!-- Message normal -->
   <div v-else :class="['flex flex-col mb-4', isMine ? 'items-end' : 'items-start']">
     <div
       :class="[
@@ -18,7 +16,6 @@
           : 'bg-gray-200 text-black self-start dark:bg-gray-600 dark:text-white rounded-bl-md',
       ]"
     >
-      <!-- Nom de l'utilisateur pour les messages des autres -->
       <div v-if="!isMine && message.username" class="text-xs font-semibold mb-1 opacity-75">
         {{ message.username }}
       </div>

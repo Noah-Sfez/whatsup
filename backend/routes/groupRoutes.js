@@ -4,7 +4,6 @@ const { authenticateToken } = require("../middlewares/auth");
 
 const router = express.Router();
 
-// Routes des groupes
 router.post("/", authenticateToken, groupController.createGroup);
 router.get("/", authenticateToken, groupController.getGroups);
 router.post("/:groupId/join", authenticateToken, groupController.joinGroup);

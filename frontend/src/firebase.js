@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore' // Firestore pour stocker les messages
+import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBasp8tn6VvkPtfPY_nDtVxtCiB5jExa_RI',
@@ -13,6 +13,6 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-const db = getFirestore(app) // Voici ta base de données Firestore
+const db = getFirestore(app)
 
 export { db }

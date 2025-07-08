@@ -9,7 +9,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 
-// Initialiser l'authentification
 const authStore = useAuthStore()
 authStore.initAuth()
 

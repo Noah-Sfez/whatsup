@@ -5,7 +5,6 @@
         {{ isLogin ? 'Login to WhatsUp' : 'Create your account' }}
       </h2>
 
-      <!-- Affichage des erreurs -->
       <div
         v-if="authStore.error"
         class="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md"
@@ -93,7 +92,6 @@ const form = ref({
 })
 
 async function handleSubmit() {
-  // Effacer les erreurs précédentes
   authStore.clearError()
 
   try {
@@ -106,7 +104,6 @@ async function handleSubmit() {
     }
 
     if (result.success) {
-      // Rediriger vers la page de chat
       router.push('/chat')
     }
   } catch (error) {
@@ -118,7 +115,6 @@ function toggleMode() {
   isLogin.value = !isLogin.value
   authStore.clearError()
 
-  // Réinitialiser le formulaire
   form.value = {
     username: '',
     email: '',

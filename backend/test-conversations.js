@@ -1,13 +1,11 @@
 const supabase = require("./config/database");
 
-// Script de test pour vérifier les conversations
 async function testConversations() {
     try {
         console.log(
             "🔍 Test de la création et récupération des conversations..."
         );
 
-        // Test 1: Vérifier l'existence des tables
         console.log("\n1. Vérification des tables...");
 
         const { data: tables, error: tablesError } = await supabase
@@ -29,7 +27,6 @@ async function testConversations() {
             tables.map((t) => t.table_name)
         );
 
-        // Test 2: Vérifier la structure des tables
         console.log("\n2. Vérification de la structure des tables...");
 
         const { data: conversationColumns, error: convError } = await supabase
@@ -50,7 +47,6 @@ async function testConversations() {
             conversationColumns
         );
 
-        // Test 3: Tester l'insertion d'une conversation (nécessite un utilisateur authentifié)
         console.log("\n3. Test d'insertion d'une conversation...");
         console.log(
             "⚠️  Pour ce test, vous devez avoir un utilisateur authentifié."
@@ -65,7 +61,6 @@ async function testConversations() {
     }
 }
 
-// Test de la connexion à la base de données
 async function testConnection() {
     try {
         console.log("🔍 Test de la connexion à la base de données...");
@@ -88,7 +83,6 @@ async function testConnection() {
     }
 }
 
-// Exécuter les tests
 async function runTests() {
     console.log("🚀 Démarrage des tests...\n");
 
@@ -113,7 +107,6 @@ async function runTests() {
     );
 }
 
-// Exécuter si le script est appelé directement
 if (require.main === module) {
     runTests();
 }

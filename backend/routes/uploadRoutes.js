@@ -5,7 +5,6 @@ const upload = require("../config/multer");
 
 const router = express.Router();
 
-// Routes d'upload
 router.post(
     "/image",
     authenticateToken,

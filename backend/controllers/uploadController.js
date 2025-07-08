@@ -3,7 +3,6 @@ const path = require("path");
 const fs = require("fs");
 
 const uploadController = {
-    // Upload d'image
     uploadImage: async (req, res) => {
         try {
             if (!req.file) {
@@ -18,7 +17,6 @@ const uploadController = {
                 "optimized-" + path.basename(originalPath)
             );
 
-            // Optimiser l'image avec Sharp
             await sharp(originalPath)
                 .resize(800, 600, {
                     fit: "inside",
@@ -27,7 +25,6 @@ const uploadController = {
                 .jpeg({ quality: 80 })
                 .toFile(optimizedPath);
 
-            // Supprimer l'original
             fs.unlinkSync(originalPath);
 
             const imageUrl = `/uploads/images/optimized-${path.basename(

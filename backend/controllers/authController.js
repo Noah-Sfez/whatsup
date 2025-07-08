@@ -6,7 +6,6 @@ const supabase = require("../config/database");
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 const authController = {
-    // Inscription
     register: async (req, res) => {
         try {
             const { username, email, password } = req.body;
@@ -21,10 +20,8 @@ const authController = {
                 return res.status(400).json({ error: "User already exists" });
             }
 
-            // Hasher le mot de passe
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Créer l'utilisateur
             const { data: user, error } = await supabase
                 .from("users")
                 .insert([
@@ -44,7 +41,6 @@ const authController = {
                 return res.status(500).json({ error: error.message });
             }
 
-            // Créer le token JWT
             const token = jwt.sign(
                 { userId: user.id, username: user.username, email: user.email },
                 JWT_SECRET,
@@ -64,12 +60,10 @@ const authController = {
         }
     },
 
-    // Connexion
     login: async (req, res) => {
         try {
             const { email, password } = req.body;
 
-            // Trouver l'utilisateur
             const { data: user, error } = await supabase
                 .from("users")
                 .select("*")
@@ -80,7 +74,6 @@ const authController = {
                 return res.status(400).json({ error: "Invalid credentials" });
             }
 
-            // Vérifier le mot de passe
             const isPasswordValid = await bcrypt.compare(
                 password,
                 user.password
@@ -89,13 +82,12 @@ const authController = {
                 return res.status(400).json({ error: "Invalid credentials" });
             }
 
-            // Mettre à jour le statut en ligne
+
             await supabase
                 .from("users")
                 .update({ is_online: true })
                 .eq("id", user.id);
 
-            // Créer le token JWT
             const token = jwt.sign(
                 { userId: user.id, username: user.username, email: user.email },
                 JWT_SECRET,

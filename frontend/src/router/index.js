@@ -25,20 +25,16 @@ const router = createRouter({
   ],
 })
 
-// Garde de navigation
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  // Initialiser l'authentification si ce n'est pas déjà fait
   if (!authStore.isAuthenticated && localStorage.getItem('token')) {
     authStore.initAuth()
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Rediriger vers la page d'authentification si l'utilisateur n'est pas connecté
     next('/auth')
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    // Rediriger vers le chat si l'utilisateur est déjà connecté
     next('/chat')
   } else {
     next()

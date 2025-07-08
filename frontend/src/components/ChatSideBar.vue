@@ -1,6 +1,5 @@
 <template>
   <div class="w-1/4 h-full border-r bg-gray-100 dark:bg-[#2C2C2C] text-black dark:text-white">
-    <!-- Toggle mode jour/nuit -->
     <div
       class="flex justify-between items-center px-4 py-3 border-b border-gray-300 dark:border-gray-600"
     >
@@ -51,7 +50,6 @@
       </div>
     </div>
 
-    <!-- Liste des conversations -->
     <div v-for="conv in filteredConversations" :key="conv.id">
       <button
         @click="$emit('select', conv.id)"
@@ -66,7 +64,6 @@
           >
             {{ conv.name[0] }}
           </div>
-          <!-- Indicateur de statut en ligne -->
           <div
             class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-700 transition-all duration-300"
             :class="[
@@ -84,7 +81,6 @@
       </button>
     </div>
 
-    <!-- Modal pour créer une nouvelle conversation -->
     <div
       v-if="showModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -107,7 +103,6 @@
             Séparez les adresses par des virgules pour créer un groupe
           </p>
 
-          <!-- Validation des emails -->
           <div v-if="emailInput.trim()" class="mt-2 space-y-1">
             <div
               v-for="email in emailInputList"
@@ -122,7 +117,6 @@
             </div>
           </div>
 
-          <!-- Vérification des utilisateurs -->
           <div v-if="isCheckingUsers" class="mt-2 text-xs text-blue-600 dark:text-blue-400">
             Vérification des utilisateurs...
           </div>
@@ -201,19 +195,15 @@ function toggleDarkMode() {
   }
 }
 
-// État pour la recherche
 const searchQuery = ref('')
 
-// État pour le modal
 const showModal = ref(false)
 const emailInput = ref('')
 const groupName = ref('')
 
-// État pour la vérification des utilisateurs
 const isCheckingUsers = ref(false)
 const userCheckResults = ref([])
 
-// Fonction pour vérifier si un utilisateur existe via l'API
 const checkUserExists = async (email) => {
   try {
     const token = localStorage.getItem('token')
@@ -245,7 +235,6 @@ const checkUserExists = async (email) => {
   }
 }
 
-// Fonction pour vérifier tous les utilisateurs en une seule requête
 const checkAllUsersAtOnce = async (emails) => {
   try {
     const token = localStorage.getItem('token')
@@ -284,7 +273,6 @@ const checkAllUsersAtOnce = async (emails) => {
   }
 }
 
-// Conversations filtrées en fonction de la recherche
 const filteredConversations = computed(() => {
   if (!searchQuery.value.trim()) {
     return props.conversations || []
@@ -295,7 +283,6 @@ const filteredConversations = computed(() => {
   )
 })
 
-// Liste des emails saisis (avant validation)
 const emailInputList = computed(() => {
   return emailInput.value
     .split(',')
@@ -303,28 +290,23 @@ const emailInputList = computed(() => {
     .filter((email) => email)
 })
 
-// Liste des emails validés
 const emailList = computed(() => {
   return emailInputList.value.filter((email) => isValidEmail(email))
 })
 
-// Validation du formulaire
 const isFormValid = computed(() => {
   return emailList.value.length > 0
 })
 
-// Vérifier s'il y a des erreurs d'utilisateurs
 const hasUserErrors = computed(() => {
   return userCheckResults.value.some((result) => !result.exists)
 })
 
-// Fonction pour valider un email
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
-// Fonction pour vérifier tous les utilisateurs
 const checkAllUsers = async () => {
   if (emailList.value.length === 0) {
     userCheckResults.value = []
@@ -337,14 +319,12 @@ const checkAllUsers = async () => {
   try {
     console.log('Vérification des utilisateurs:', emailList.value)
 
-    // Utiliser la vérification groupée pour de meilleures performances
     const results = await checkAllUsersAtOnce(emailList.value)
 
     console.log('Résultats:', results)
     userCheckResults.value = results
   } catch (error) {
     console.error('Erreur lors de la vérification des utilisateurs:', error)
-    // En cas d'erreur, marquer tous les utilisateurs comme non trouvés
     userCheckResults.value = emailList.value.map((email) => ({
       email,
       exists: false,
@@ -356,13 +336,11 @@ const checkAllUsers = async () => {
   }
 }
 
-// Watcher pour vérifier les utilisateurs quand la liste change
 watch(
   emailList,
   async (newEmailList, oldEmailList) => {
     console.log('Emails changés:', newEmailList)
 
-    // Débounce pour éviter trop de requêtes
     clearTimeout(checkUsersTimeout)
     checkUsersTimeout = setTimeout(async () => {
       await checkAllUsers()
@@ -373,7 +351,6 @@ watch(
 
 let checkUsersTimeout = null
 
-// Fermer le modal
 const closeModal = () => {
   showModal.value = false
   emailInput.value = ''
@@ -385,17 +362,15 @@ const closeModal = () => {
   }
 }
 
-// Créer la conversation
 const createConversation = () => {
   if (!isFormValid.value || hasUserErrors.value) return
 
-  // Récupère les userId
   const participants = userCheckResults.value
     .filter((result) => result.exists && result.user && result.user.id)
     .map((result) => result.user.id)
 
   const conversationData = {
-    participants, // des userId, pas des emails !
+    participants,
     name: emailList.value.length > 1 ? groupName.value : null,
     is_group: emailList.value.length > 1,
   }

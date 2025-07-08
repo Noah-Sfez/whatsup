@@ -11,7 +11,6 @@
   background-repeat: repeat;
 }
 
-/* Animation pour l'indicateur de statut en ligne */
 .online-indicator {
   animation: pulse 2s infinite;
 }
@@ -26,7 +25,6 @@
   }
 }
 
-/* Transition pour les changements de statut */
 .status-transition {
   transition: all 0.3s ease;
 }
@@ -52,7 +50,6 @@
       </div>
     </div>
 
-    <!-- Messages -->
     <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-whatsapp">
       <MessageBubble
         v-for="msg in messages"
@@ -62,7 +59,6 @@
       />
     </div>
 
-    <!-- Input -->
     <div class="p-4 bg-white border-t dark:border-color-[#222222] dark:bg-[#2c2c2c]">
       <MessageInput @send="$emit('send', $event)" />
     </div>
